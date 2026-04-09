@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import BackButton from "../components/BackButton";
 import "./Donation.css";
+import { API_BASE_URL } from "../config/api";
 
 function Donation() {
   const [amount, setAmount] = useState(500);
@@ -68,7 +69,7 @@ function Donation() {
         };
         try {
           // Send donation data to your backend
-          const res = await fetch("http://localhost:5000/donations", {
+          const res = await fetch(`${API_BASE_URL}/donations`, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify(donationData),

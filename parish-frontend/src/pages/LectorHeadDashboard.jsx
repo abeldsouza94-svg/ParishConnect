@@ -3,8 +3,9 @@ import { Link } from "react-router-dom";
 import "./LectorHeadDashboard.css";
 import CommunityChat from "./CommunityChat";
 import BackButton from "../components/BackButton";
+import { API_BASE_URL } from "../config/api";
 
-const API_BASE = "http://localhost:5000";
+const API_BASE = API_BASE_URL;
 
 const LectorHeadDashboard = () => {
 

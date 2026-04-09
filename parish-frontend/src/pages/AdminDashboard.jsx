@@ -2,8 +2,9 @@ import React, { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import "./AdminDashboard.css";
 import BackButton from "../components/BackButton";
+import { API_BASE_URL } from "../config/api";
 
-const API_BASE = "http://localhost:5000";
+const API_BASE = API_BASE_URL;
 
 const AdminDashboard = () => {
 

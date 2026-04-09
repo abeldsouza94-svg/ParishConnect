@@ -3,8 +3,9 @@ import { useNavigate, Link } from "react-router-dom";
 import "./PriestDashboard.css";
 import BackButton from "../components/BackButton";
 import CommunityChat from "./CommunityChat";
+import { API_BASE_URL } from "../config/api";
 
-const API_BASE = "http://localhost:5000";
+const API_BASE = API_BASE_URL;
 
 const PriestDashboard = () => {
   const navigate = useNavigate();

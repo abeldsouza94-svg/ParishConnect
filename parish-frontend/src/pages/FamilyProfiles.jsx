@@ -4,6 +4,7 @@ import "./FamilyProfiles.css";
 import BackButton from "../components/BackButton";
 import Footer from "../components/Footer";
 import UserManual from "../components/UserManual";
+import { API_BASE_URL } from "../config/api";
 
 function FamilyProfiles() {
   const navigate = useNavigate();
@@ -18,7 +19,7 @@ function FamilyProfiles() {
       return;
     }
 
-    fetch("http://localhost:5000/families")
+    fetch(`${API_BASE_URL}/families`)
       .then(res => res.json())
       .then(data => {
         const currentFamily = data.find(f => f.familyId === familyId);

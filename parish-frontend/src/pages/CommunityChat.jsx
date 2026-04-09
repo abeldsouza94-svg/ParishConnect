@@ -3,9 +3,10 @@ import { io } from "socket.io-client";
 import { useParams } from "react-router-dom";
 import BackButton from "../components/BackButton";
 import "./CommunityChat.css";
+import { API_BASE_URL } from "../config/api";
 
-const socket = io("http://localhost:5000");
-const API_BASE = "http://localhost:5000";
+const socket = io(API_BASE_URL);
+const API_BASE = API_BASE_URL;
 
 function CommunityChat({ communityName }) {
   const { community: urlCommunity } = useParams();

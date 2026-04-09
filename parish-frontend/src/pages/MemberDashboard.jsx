@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import "./MemberDashboard.css";
 import BackButton from "../components/BackButton";
+import { API_BASE_URL } from "../config/api";
 
 function MemberDashboard() {
   const [activeTab, setActiveTab] = useState("Sacrament Records");
@@ -14,7 +15,7 @@ function MemberDashboard() {
   const userCommunity = localStorage.getItem("userCommunity") || "None";
 
   useEffect(() => {
-    fetch("http://localhost:5000/announcements")
+    fetch(`${API_BASE_URL}/announcements`)
       .then(res => res.json())
       .then(data => {
         // Filter announcements for the specific community or general ones
@@ -23,25 +24,25 @@ function MemberDashboard() {
       });
 
     if (userCommunity === "Altar") {
-      fetch("http://localhost:5000/altar-assignments")
+      fetch(`${API_BASE_URL}/altar-assignments`)
         .then(res => res.json())
         .then(data => setAltarAssignments(data))
         .catch(err => console.error(err));
     }
 
     if (userCommunity === "Lector") {
-      fetch("http://localhost:5000/lector-assignments")
+      fetch(`${API_BASE_URL}/lector-assignments`)
         .then(res => res.json())
         .then(data => setLectorAssignments(data))
         .catch(err => console.error(err));
     }
 
-    fetch("http://localhost:5000/gallery")
+    fetch(`${API_BASE_URL}/gallery`)
       .then(res => res.json())
       .then(data => setGalleryItems(data))
       .catch(err => console.error(err));
 
-    fetch("http://localhost:5000/records")
+    fetch(`${API_BASE_URL}/records`)
       .then(res => res.json())
       .then(data => {
         // Filter records belonging to this specific member

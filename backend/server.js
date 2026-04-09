@@ -8,7 +8,10 @@ const { Server } = require("socket.io");
 
 // ===== APP SETUP =====
 const app = express();
-app.use(cors());
+app.use(cors({
+  origin: ["https://parish-connect-ten.vercel.app", "http://localhost:5173", "http://localhost:3000"],
+  credentials: true
+}));
 // Increase limit for Base64 image uploads
 app.use(express.json({ limit: '10mb' }));
 
@@ -611,7 +614,8 @@ const server = http.createServer(app);
 
 const io = new Server(server, {
   cors: {
-    origin: "*",
+    origin: ["https://parish-connect-ten.vercel.app", "http://localhost:5173", "http://localhost:3000"],
+    credentials: true
   },
 });
 

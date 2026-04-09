@@ -3,8 +3,9 @@ import { useState, useEffect } from "react";
 import "./Home.css";
 import Footer from "../components/Footer";
 import UserManual from "../components/UserManual";
+import { API_BASE_URL } from "../config/api";
 
-const API_BASE = "http://localhost:5000";
+const API_BASE = API_BASE_URL;
 
 function HomePage() {
   const [announcements, setAnnouncements] = useState([]);
