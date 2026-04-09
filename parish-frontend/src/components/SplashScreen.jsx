@@ -12,12 +12,15 @@ export default function SplashScreen({ onComplete }) {
     // Stage 1: Hold logo (500ms)
     const timer2 = setTimeout(() => setStage(2), 1500);
     
-    
+    // Stage 2: Fade out and show content
+    const timer3 = setTimeout(() => {
+      onComplete();
+    }, 2500);
 
     return () => {
       clearTimeout(timer1);
       clearTimeout(timer2);
-      
+      clearTimeout(timer3);
     };
   }, [onComplete]);
 
