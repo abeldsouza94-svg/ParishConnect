@@ -19,7 +19,7 @@ export default function PageTransition({ children, delay = 400 }) {
         <div className="page-loader">
           <div className="loader-content">
             <img 
-                src="src/assets/line.png" 
+                src="/line.png" 
               alt="loading" 
               className="loader-animation" 
             />
