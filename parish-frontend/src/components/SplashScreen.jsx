@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import "./SplashScreen.css";
+import logo from "../assets/logo.png";
 
 export default function SplashScreen({ onComplete }) {
   const [stage, setStage] = useState(0);
@@ -27,7 +28,7 @@ export default function SplashScreen({ onComplete }) {
     <div className={`splash-screen stage-${stage}`}>
       <div className="splash-content">
         <img 
-          src="src/assets/logo.png" 
+          src={logo}
           alt="ParishConnect" 
           className="splash-logo"
         />
