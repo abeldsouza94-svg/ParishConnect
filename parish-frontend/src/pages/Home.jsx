@@ -50,7 +50,7 @@ function HomePage() {
       {/* NAVBAR */}
       <nav className="navbar">
         <div className="navbar-brand">
-          <img src="src/assets/logo.png" alt="ParishConnect Logo" className="navbar-logo" />
+          <img src="/logo.png" alt="ParishConnect Logo" className="navbar-logo" />
         </div>
 
         <div className="nav-links">
