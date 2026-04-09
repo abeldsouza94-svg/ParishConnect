@@ -65,7 +65,7 @@ function Login() {
       <BackButton />
 
       <div className="login-header">
-        <img src="src/assets/logo2.png" alt="ParishConnect Logo" className="login-logo" />
+        <img src="logo2.png" alt="ParishConnect Logo" className="login-logo" />
         <h3>Secure Access Portal</h3>
       </div>
 
