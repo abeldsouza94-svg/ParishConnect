@@ -1,63 +1,294 @@
+/* ========== FAMILY PROFILES PAGE ========== */
+
 .family-page {
   min-height: 100vh;
-  background: #f4f6fb;
+  background-color: var(--light-bg);
   display: flex;
   flex-direction: column;
-  align-items: center;
-  padding: 40px;
 }
+
+/* ========== HEADER ========== */
 
 .family-header {
-  text-align: center;
-  margin-bottom: 30px;
+  padding: var(--spacing-2xl) var(--spacing-lg);
+  background: linear-gradient(135deg, var(--primary-color) 0%, var(--primary-light) 100%);
+  color: white;
+  box-shadow: var(--shadow-medium);
 }
 
-.logo {
-  font-size: 40px;
+.header-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--spacing-lg);
+  margin-bottom: var(--spacing-lg);
 }
+
+.header-title {
+  margin: 0;
+  font-size: var(--font-size-2xl);
+  font-weight: 700;
+  flex: 1;
+  text-align: center;
+}
+
+.btn-help-family {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  background-color: rgba(255, 255, 255, 0.2);
+  color: white;
+  border: 2px solid white;
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.btn-help-family:hover {
+  background-color: white;
+  color: var(--primary-color);
+}
+
+.family-welcome {
+  margin: 0;
+  font-size: var(--font-size-lg);
+  opacity: 0.95;
+  text-align: center;
+}
+
+/* ========== MAIN CONTENT ========== */
+
+.family-content {
+  flex: 1;
+  padding: var(--spacing-2xl) var(--spacing-lg);
+}
+
+.family-content h2 {
+  color: var(--primary-color);
+  font-size: var(--font-size-2xl);
+  text-align: center;
+  margin-bottom: var(--spacing-2xl);
+  font-weight: 700;
+}
+
+/* ========== PROFILE LIST ========== */
 
 .profile-list {
-  width: 100%;
   max-width: 600px;
+  margin: 0 auto;
+  display: grid;
+  gap: var(--spacing-md);
 }
 
 .profile-card {
-  background: white;
-  padding: 18px;
-  border-radius: 12px;
-  margin-bottom: 15px;
-  display: flex;
-  justify-content: space-between;
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: var(--spacing-lg);
   align-items: center;
+  padding: var(--spacing-lg);
+  background: white;
+  border-radius: var(--radius-lg);
+  border: 2px solid var(--border-color);
   cursor: pointer;
-  border: 1px solid #e1e4f0;
-  transition: 0.2s;
+  transition: all var(--transition-base);
+  box-shadow: var(--shadow-light);
 }
 
 .profile-card:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+  transform: translateY(-4px);
+  box-shadow: var(--shadow-medium);
+  border-color: var(--primary-color);
 }
 
-.profile-left {
+.profile-card:active {
+  transform: translateY(0);
+}
+
+.profile-content {
   display: flex;
-  gap: 15px;
+  gap: var(--spacing-md);
   align-items: center;
 }
 
 .avatar {
-  background: #eef1ff;
-  padding: 12px;
-  border-radius: 50%;
+  font-size: 2.5rem;
+  width: 60px;
+  height: 60px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(135deg, rgba(108, 74, 182, 0.1) 0%, rgba(255, 123, 0, 0.1) 100%);
+  border-radius: var(--radius-xl);
+  flex-shrink: 0;
+}
+
+.profile-info {
+  min-width: 0;
+}
+
+.profile-info h4 {
+  margin: 0 0 var(--spacing-xs) 0;
+  color: var(--primary-color);
+  font-size: var(--font-size-lg);
+  font-weight: 600;
+}
+
+.profile-info .role {
+  margin: 0 0 var(--spacing-xs) 0;
+  color: var(--text-light);
+  font-size: var(--font-size-sm);
+}
+
+.community-tag {
+  display: inline-block;
+  padding: var(--spacing-xs) var(--spacing-sm);
+  background-color: rgba(108, 74, 182, 0.1);
+  color: var(--primary-color);
+  border-radius: var(--radius-full);
+  font-size: var(--font-size-xs);
+  font-weight: 600;
 }
 
 .arrow {
-  font-size: 24px;
-  color: #999;
+  font-size: var(--font-size-2xl);
+  color: var(--primary-color);
+  font-weight: 300;
 }
 
-.signout {
-  margin-top: 30px;
-  color: #555;
-  cursor: pointer;
+.empty-state {
+  text-align: center;
+  padding: var(--spacing-2xl);
+  background: white;
+  border-radius: var(--radius-lg);
+  color: var(--text-light);
+}
+
+/* ========== ACTIONS ========== */
+
+.family-actions {
+  display: flex;
+  justify-content: center;
+  padding: var(--spacing-xl) var(--spacing-lg);
+  border-top: 1px solid var(--border-color);
+}
+
+.family-actions .btn {
+  min-width: 250px;
+}
+
+/* ========== RESPONSIVE DESIGN ========== */
+
+@media (max-width: 768px) {
+  .family-header {
+    padding: var(--spacing-xl) var(--spacing-md);
+  }
+
+  .header-top {
+    gap: var(--spacing-md);
+  }
+
+  .header-title {
+    font-size: var(--font-size-xl);
+  }
+
+  .family-welcome {
+    font-size: var(--font-size-base);
+  }
+
+  .family-content {
+    padding: var(--spacing-xl) var(--spacing-md);
+  }
+
+  .family-content h2 {
+    font-size: var(--font-size-xl);
+    margin-bottom: var(--spacing-xl);
+  }
+
+  .profile-list {
+    max-width: none;
+  }
+
+  .avatar {
+    font-size: 2rem;
+    width: 50px;
+    height: 50px;
+  }
+
+  .family-actions .btn {
+    min-width: auto;
+    width: 100%;
+  }
+}
+
+@media (max-width: 480px) {
+  .family-header {
+    padding: var(--spacing-lg) var(--spacing-md);
+  }
+
+  .header-top {
+    flex-wrap: wrap;
+    gap: var(--spacing-sm);
+  }
+
+  .header-title {
+    font-size: var(--font-size-lg);
+    flex-basis: 100%;
+    order: 2;
+  }
+
+  .back-button {
+    order: 1;
+  }
+
+  .btn-help-family {
+    order: 3;
+    width: 36px;
+    height: 36px;
+  }
+
+  .family-welcome {
+    font-size: var(--font-size-sm);
+  }
+
+  .family-content {
+    padding: var(--spacing-lg) var(--spacing-sm);
+  }
+
+  .family-content h2 {
+    font-size: var(--font-size-base);
+    margin-bottom: var(--spacing-lg);
+  }
+
+  .profile-card {
+    padding: var(--spacing-md);
+    gap: var(--spacing-md);
+  }
+
+  .avatar {
+    font-size: 1.5rem;
+    width: 45px;
+    height: 45px;
+  }
+
+  .profile-info h4 {
+    font-size: var(--font-size-sm);
+  }
+
+  .profile-info .role {
+    font-size: var(--font-size-xs);
+  }
+
+  .arrow {
+    font-size: var(--font-size-xl);
+  }
+
+  .family-actions {
+    padding: var(--spacing-lg) var(--spacing-sm);
+  }
+
+  .family-actions .btn {
+    font-size: var(--font-size-sm);
+  }
 }

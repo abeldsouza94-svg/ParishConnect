@@ -1,51 +1,42 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { io } from "socket.io-client";
+import { useParams } from "react-router-dom";
+import BackButton from "../components/BackButton";
 import "./CommunityChat.css";
-import { Link, useParams } from "react-router-dom";
 
 const socket = io("http://localhost:5000");
+const API_BASE = "http://localhost:5000";
 
-function CommunityChat() {
-
-  const { community } = useParams();
+function CommunityChat({ communityName }) {
+  const { community: urlCommunity } = useParams();
+  const community = communityName || urlCommunity;
 
   const [message, setMessage] = useState("");
   const [messages, setMessages] = useState([]);
 
-  // 🔥 Now user is OBJECT (id + name)
-  const [currentUser, setCurrentUser] = useState({
-    id: "",
-    name: ""
-  });
+  const [currentUser] = useState(() => ({
+    id: localStorage.getItem("familyId"),
+    name: localStorage.getItem("userName")
+  }));
 
   const bottomRef = useRef(null);
 
-  // ✅ Load user from localStorage
-  useEffect(() => {
-    const id = localStorage.getItem("familyId") || "Guest";
-    const name = localStorage.getItem("userName") || "Guest";
-
-    setCurrentUser({ id, name });
-  }, []);
-
-  // 🔹 Load old messages
-  useEffect(() => {
-    fetchMessages();
-  }, [community]);
-
-  const fetchMessages = async () => {
+  const fetchMessages = useCallback(async () => {
     try {
       const res = await fetch(
-        `http://localhost:5000/messages/${community}`
+        `${API_BASE}/messages/${community}`
       );
       const data = await res.json();
       setMessages(data);
-    } catch (err) {
-      console.log("Fetch error:", err);
+    } catch (_err) {
+      console.log("Fetch error");
     }
-  };
+  }, [community]);
 
-  // 🔥 Real-time listener
+  useEffect(() => {
+    fetchMessages();
+  }, [fetchMessages]);
+
   useEffect(() => {
     socket.on("receiveMessage", (data) => {
       if (data.community === community) {
@@ -59,7 +50,7 @@ function CommunityChat() {
     return () => socket.off("receiveMessage");
   }, [community]);
 
-  // 🔹 Send message
+  //  Send message
   const sendMessage = () => {
     if (!message.trim()) return;
 
@@ -78,7 +69,39 @@ function CommunityChat() {
     setMessage("");
   };
 
-  // 🔽 Auto scroll
+  const handleClearChat = async () => {
+    if (!window.confirm(`Are you sure you want to clear all messages in the ${community} chat? This cannot be undone.`)) {
+      return;
+    }
+
+    try {
+      const res = await fetch(`${API_BASE}/messages/${community}`, { method: "DELETE" });
+      if (res.ok) {
+        setMessages([]);
+      }
+    } catch (_err) {
+      console.error("Error clearing chat");
+    }
+  };
+
+  const handleKeyDown = (e) => {
+    if (e.key === "Enter" && e.shiftKey) {
+      e.preventDefault();
+      sendMessage();
+    } else if (e.key === "Enter") {
+      e.preventDefault();
+      setMessage(message + "\n");
+    }
+  };
+
+  const handleTextChange = (e) => {
+    const textarea = e.target;
+    setMessage(textarea.value);
+    textarea.style.height = "auto";
+    textarea.style.height = Math.min(textarea.scrollHeight, 150) + "px";
+  };
+
+  //  Auto scroll
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
@@ -88,8 +111,15 @@ function CommunityChat() {
 
       {/* HEADER */}
       <div className="chat-header">
-        <Link to="/community-chats">← Back</Link>
+        <BackButton />
         <h3>{community}</h3>
+        {(currentUser.id === "ADMIN" || currentUser.id === "ADMIN01" || 
+          (currentUser.id === "HEAD_ALTAR" && community === "Altar Servers") || 
+          (currentUser.id === "HEAD_LECTORS" && community === "Lectors Ministry")) && (
+          <button onClick={handleClearChat} className="clear-chat-btn" style={{ background: '#f44336', color: 'white', border: 'none', padding: '5px 10px', borderRadius: '4px', cursor: 'pointer', fontSize: '0.8rem' }}>
+            Clear History
+          </button>
+        )}
       </div>
 
       {/* MESSAGES */}
@@ -118,12 +148,13 @@ function CommunityChat() {
 
       {/* INPUT */}
       <div className="chat-input">
-        <input
-          placeholder="Type message..."
+        <textarea
+          placeholder="Type message... (Shift+Enter to send, Enter for new line)"
           value={message}
-          onChange={(e) => setMessage(e.target.value)}
+          onChange={handleTextChange}
+          onKeyDown={handleKeyDown}
+          style={{ resize: "none", overflow: "hidden", maxHeight: "150px", minHeight: "40px" }}
         />
-
         <button onClick={sendMessage}>Send</button>
       </div>
 

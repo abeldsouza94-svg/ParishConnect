@@ -7,6 +7,12 @@
   padding: 40px 20px;
 }
 
+.backbutton {
+  width: 100%;
+  max-width: 650px;
+  margin-bottom: 15px;
+}
+
 .back-link {
   width: 100%;
   max-width: 650px;

@@ -259,7 +259,7 @@ cursor:pointer;
   color: #26284f;
 }
 
-..records-header .sub {
+.records-header .sub {
   color: #6f7298;
   margin: 0;
   font-size: 15px;
@@ -281,6 +281,13 @@ th, td {
   text-align: left;
   padding: 16px 18px;
   border-bottom: none;
+}
+
+thead th {
+  position: sticky;
+  top: 0;
+  background: white;
+  z-index: 10;
 }
 
 thead tr {
@@ -439,4 +446,43 @@ th, td {
   font-weight: 500;
   margin-bottom: 20px;
   cursor: pointer;
+}
+
+.gallery-item-container {
+  position: relative;
+  border-radius: 10px;
+  overflow: hidden;
+  height: 180px;
+  box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+}
+
+.gallery-overlay {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  background: rgba(0, 0, 0, 0.75);
+  color: white;
+  padding: 12px;
+  transform: translateY(100%);
+  transition: transform 0.3s ease;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+}
+
+.gallery-item-container:hover .gallery-overlay {
+  transform: translateY(0);
+}
+
+.delete-photo-btn {
+  margin-top: 8px;
+  background: #f44336;
+  border: none;
+  padding: 4px 10px;
+  border-radius: 4px;
+  color: white;
+  cursor: pointer;
+  font-size: 0.75rem;
 }

@@ -1,13 +1,18 @@
 import { useState } from "react";
-import { Link } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
+import BackButton from "../components/BackButton";
 import "./Donation.css";
 
 function Donation() {
   const [amount, setAmount] = useState(500);
   const [target, setTarget] = useState("To the Church");
+  const [donorName, setDonorName] = useState("");
+  const [donorPhone, setDonorPhone] = useState("");
+  const [donorAddress, setDonorAddress] = useState("");
   const [error, setError] = useState("");
 
   const handleAmountChange = (value) => {
+    // Ensure value is a number before setting
     const num = Number(value);
     setAmount(num);
 
@@ -22,7 +27,19 @@ function Donation() {
     }
   };
 
+  const navigate = useNavigate();
+  const [notification, setNotification] = useState(null);
+  const showNotify = (msg, type = "success") => {
+    setNotification({ msg, type });
+    setTimeout(() => setNotification(null), 3000);
+  };
+
   const handlePayment = () => {
+
+    if (!donorName || !donorPhone || !donorAddress) {
+      setError("Please fill in your contact details before proceeding.");
+      return;
+    }
 
     if (amount < 100 || amount > 100000) {
       setError("Please enter an amount between ₹100 and ₹1,00,000");
@@ -36,9 +53,34 @@ function Donation() {
       name: "ParishConnect",
       description: `Donation - ${target}`,
 
-      handler: function (response) {
-        alert("Payment Successful!");
-        console.log(response);
+      handler: async function (response) {
+        const donationData = {
+          amount: amount,
+          target: target,
+          donorName: donorName,
+          donorPhone: donorPhone,
+          donorAddress: donorAddress,
+          paymentId: response.razorpay_payment_id,
+          orderId: response.razorpay_order_id,
+          signature: response.razorpay_signature,
+          date: new Date().toISOString().slice(0, 10),
+          status: "Completed", 
+        };
+        try {
+          // Send donation data to your backend
+          const res = await fetch("http://localhost:5000/donations", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(donationData),
+          });
+          if (!res.ok) throw new Error("Failed to save donation");
+
+          showNotify("Payment Successful!", "success");
+          navigate("/"); // Redirect to homepage
+        } catch (error) {
+          console.error("Error saving donation:", error);
+          showNotify("Donation Failed!", "error");
+        }
       },
 
       theme: {
@@ -53,12 +95,33 @@ function Donation() {
   return (
     <div className="donation-page">
 
-      <Link to="/" className="back-btn">← Back</Link>
+      <div className="backbutton">
+        <BackButton />
+      </div>
+      
 
       <div className="donation-card2">
 
         <h4>SUPPORT OUR MISSION</h4>
         <h2>Make a Donation</h2>
+
+        <div className="donor-info-section" style={{ marginBottom: '20px' }}>
+          <label style={{ display: 'block', fontSize: '0.85rem', marginBottom: '5px' }}>Full Name</label>
+          <input 
+            type="text" placeholder="Your Name" value={donorName} 
+            onChange={(e) => setDonorName(e.target.value)} style={{ width: '100%', padding: '10px', marginBottom: '10px', borderRadius: '6px', border: '1px solid #ddd' }} 
+          />
+          <label style={{ display: 'block', fontSize: '0.85rem', marginBottom: '5px' }}>Phone Number</label>
+          <input 
+            type="text" placeholder="Mobile No." value={donorPhone} 
+            onChange={(e) => setDonorPhone(e.target.value)} style={{ width: '100%', padding: '10px', marginBottom: '10px', borderRadius: '6px', border: '1px solid #ddd' }} 
+          />
+          <label style={{ display: 'block', fontSize: '0.85rem', marginBottom: '5px' }}>Address</label>
+          <textarea 
+            placeholder="Your Address" value={donorAddress} 
+            onChange={(e) => setDonorAddress(e.target.value)} style={{ width: '100%', padding: '10px', borderRadius: '6px', border: '1px solid #ddd', minHeight: '60px' }} 
+          />
+        </div>
 
         <div className="targets">
 
@@ -129,6 +192,16 @@ function Donation() {
         </button>
 
       </div>
+      {/* NOTIFICATION TOAST */}
+      {notification && (
+        <div style={{
+          position: 'fixed', bottom: '20px', right: '20px', padding: '12px 25px',
+          borderRadius: '8px', color: 'white', backgroundColor: notification.type === 'error' ? '#f44336' : '#4caf50',
+          boxShadow: '0 4px 15px rgba(0,0,0,0.2)', zIndex: 2000, transition: 'all 0.3s ease'
+        }}>
+          {notification.msg}
+        </div>
+      )}
 
     </div>
   );

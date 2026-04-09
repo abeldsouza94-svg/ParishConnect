@@ -1,16 +1,34 @@
 import { useNavigate } from "react-router-dom";
+import BackButton from "../components/BackButton";
+import Footer from "../components/Footer";
 import "./CommunityChats.css";
 
 function CommunityChats() {
-
   const navigate = useNavigate();
+  const familyId = localStorage.getItem("familyId");
+  const userCommunity = localStorage.getItem("userCommunity") || "None";
 
-  // Later comes from backend
-  const userCommunities = [
-    "Parish ",
-    "Lectors Ministry",
-   
-  ];
+  // Restrict chats: Everyone sees Parish, but only their own ministry
+  let userCommunities = ["Parish"];
+
+  if (familyId === "ADMIN" || familyId === "ADMIN01") {
+    userCommunities = ["Parish", "Altar Servers", "Lectors Ministry"];
+  }
+  else if (familyId === "HEAD_ALTAR") {
+    userCommunities = ["Parish", "Altar Servers"];
+  }
+  else if (familyId === "HEAD_LECTORS") {
+    userCommunities = ["Parish", "Lectors Ministry"];
+  }
+  
+  else if (userCommunity !== "None") {
+    if (userCommunity === "Altar") {
+      userCommunities.push("Altar Servers");
+    } 
+    else if (userCommunity === "Lector") {
+      userCommunities.push("Lectors Ministry");
+    }
+  }
 
   const openChat = (community) => {
     navigate(`/community-chat/${community}`);
@@ -18,7 +36,7 @@ function CommunityChats() {
 
   return (
     <div className="community-page">
-
+      <BackButton />
       <h1>Community Chats</h1>
       <p>Select a community to enter chat</p>
 
@@ -34,7 +52,7 @@ function CommunityChats() {
           </div>
         ))}
       </div>
-
+      <Footer />
     </div>
   );
 }
