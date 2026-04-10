@@ -541,31 +541,36 @@ const handleSaveRecord = async ()=>{
   };
 
   try {
-    let response;
     if (form._id) {
-      response = await fetch(`${API_BASE}/records/${form._id}`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload)
-      });
-    } else {
-      response = await fetch(`${API_BASE}/records`, {
+      // For editing: Delete old record and create new one
+      await fetch(`${API_BASE}/records/${form._id}`, { method: "DELETE" });
+      
+      const response = await fetch(`${API_BASE}/records`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload)
       });
-    }
-
-    if (!response.ok) throw new Error("Could not save record");
-
-    const saved = await response.json();
-    if (form._id) {
-      setRecords(prev => prev.map(r => r._id === form._id ? saved : r));
+      
+      if (!response.ok) throw new Error("Could not save record");
+      
+      const saved = await response.json();
+      setRecords(prev => prev.filter(r => r._id !== form._id).concat(saved));
       showNotify("Record updated");
     } else {
+      // Creating new record
+      const response = await fetch(`${API_BASE}/records`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload)
+      });
+      
+      if (!response.ok) throw new Error("Could not save record");
+      
+      const saved = await response.json();
       setRecords(prev => [...prev, saved]);
       showNotify("Record saved");
     }
+    
     setView("list");
     setForm({});
     setErrors({});
@@ -1365,7 +1370,7 @@ view==="list"?(
 
 <div className="sacrament-card">
 
-<div className="back-link" onClick={() => { setView("list"); setNameSuggestions([]); }}>← Back</div>
+<div className="back-link" onClick={() => { setView("list"); setNameSuggestions([]); }}> X </div>
 
 <h2>{form._id ? "Edit Record" : "Add Record"}</h2>
 
@@ -1625,7 +1630,7 @@ view==="list" ? (
 
 <div className="comunity-card">
 
-<div className="back-link" onClick={()=>setView("list")}>← Back</div>
+<div className="back-link" onClick={()=>setView("list")}> X </div>
 
 <h2>{editingCommunityIdx !== null ? "Edit Community" : "Request New Community"}</h2>
 
@@ -1688,7 +1693,7 @@ view==="list" ? (
 
 <div className="donation-card">
 
-<div className="back-link" onClick={()=>setView("list")}>← Back</div>
+<div className="back-link" onClick={()=>setView("list")}> X </div>
 
 <h2>{editingDonationIdx !== null ? "Edit Donation Option" : "Add Donation Option"}</h2>
 

@@ -6,16 +6,16 @@ export default function SplashScreen({ onComplete }) {
   const [stage, setStage] = useState(0);
 
   useEffect(() => {
-    // Stage 0: Logo fade in (3 second)
-    const timer1 = setTimeout(() => setStage(1), 3000);
+    // Stage 0: Logo fade in (1.5 seconds)
+    const timer1 = setTimeout(() => setStage(1), 1500);
     
     // Stage 1: Hold logo (500ms)
-    const timer2 = setTimeout(() => setStage(2), 1500);
+    const timer2 = setTimeout(() => setStage(2), 2000);
     
-    // Stage 2: Fade out and show content
+    // Stage 2: Fade out and show content (completes after 0.8s fade)
     const timer3 = setTimeout(() => {
       onComplete();
-    }, 2500);
+    }, 2800);
 
     return () => {
       clearTimeout(timer1);

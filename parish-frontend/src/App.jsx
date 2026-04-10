@@ -38,7 +38,7 @@ function App() {
   const skipAnimation = justExitedSplash;
 
   return (
-    <PageTransition key={key} delay={skipAnimation || isChatRoute ? 0 : 300}>
+    <PageTransition key={key} delay={skipAnimation || isChatRoute ? 0 : 100}>
       <Routes>
         <Route path="/" element={<Home />} />
         <Route path="/login" element={<Login />} />
