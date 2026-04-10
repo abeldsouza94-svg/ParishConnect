@@ -3,6 +3,7 @@ import { useNavigate, Link } from "react-router-dom";
 import "./PriestDashboard.css";
 import BackButton from "../components/BackButton";
 import CommunityChat from "./CommunityChat";
+import LoadingOverlay from "../components/LoadingOverlay";
 import { API_BASE_URL } from "../config/api";
 
 const API_BASE = API_BASE_URL;
@@ -10,6 +11,7 @@ const API_BASE = API_BASE_URL;
 const PriestDashboard = () => {
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState("Announcements");
+  const [isLoading, setIsLoading] = useState(true);
   const [view, setView] = useState("list");
   const [search, setSearch] = useState("");
   const [sacramentFilter, setSacramentFilter] = useState({ startDate: '', endDate: '', types: [], sortOrder: 'desc' });
@@ -38,6 +40,46 @@ const PriestDashboard = () => {
       return;
     }
   }, [navigate]);
+
+  useEffect(() => {
+    const loadAllData = async () => {
+      try {
+        setIsLoading(true);
+        const responses = await Promise.all([
+          fetch(`${API_BASE}/records`),
+          fetch(`${API_BASE}/families`),
+          fetch(`${API_BASE}/communities`),
+          fetch(`${API_BASE}/donation-options`),
+          fetch(`${API_BASE}/mass-bookings`),
+          fetch(`${API_BASE}/donations`),
+          fetch(`${API_BASE}/gallery`)
+        ]);
+
+        if (responses[0].ok) setRecords(await responses[0].json());
+        if (responses[1].ok) setFamilies(await responses[1].json());
+        if (responses[2].ok) setCommunities(await responses[2].json());
+        if (responses[3].ok) {
+          setDonationOptions(await responses[3].json());
+        } else {
+          setDonationOptions([
+            { name: "To the Church", desc: "General maintenance and operations." },
+            { name: "To Pilar Church", desc: "Support for sister parish missions." },
+            { name: "Good Samaritan Fund", desc: "Assistance for the needy in our community." }
+          ]);
+        }
+        if (responses[4].ok) setMassBookings(await responses[4].json());
+        if (responses[5].ok) setDonations(await responses[5].json());
+        if (responses[6].ok) setGalleryItems(await responses[6].json());
+        
+        setIsLoading(false);
+      } catch (_err) {
+        console.error("Error loading priest dashboard");
+        setIsLoading(false);
+      }
+    };
+
+    loadAllData();
+  }, []);
 
   useEffect(() => {
     loadRecords();
@@ -341,6 +383,7 @@ const formatPhoneForExport = (phone) => {
 
   return (
     <div className="priest-container">
+      <LoadingOverlay isLoading={isLoading} message="Loading priest dashboard..." />
       <div className="priest-header">
         <div>
           <BackButton />

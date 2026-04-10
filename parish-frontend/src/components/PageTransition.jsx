@@ -1,13 +1,13 @@
 import { useEffect, useState, useLayoutEffect } from "react";
 import "./PageTransition.css";
 
-export default function PageTransition({ children, delay = 400 }) {
-  const [isLoading, setIsLoading] = useState(true);
+export default function PageTransition({ children, delay = 100 }) {
+  const [isVisible, setIsVisible] = useState(false);
 
   useLayoutEffect(() => {
-    setIsLoading(true);
+    setIsVisible(false);
     const timer = setTimeout(() => {
-      setIsLoading(false);
+      setIsVisible(true);
     }, delay);
 
     return () => clearTimeout(timer);
@@ -15,6 +15,7 @@ export default function PageTransition({ children, delay = 400 }) {
 
   return (
     <div className="page-transition">
+<<<<<<< HEAD
       {isLoading && (
         <div className="page-loader">
           <div className="loader-content">
@@ -27,6 +28,9 @@ export default function PageTransition({ children, delay = 400 }) {
         </div>
       )}
       <div className={`page-content ${!isLoading ? "visible" : ""}`}>
+=======
+      <div className={`page-content ${isVisible ? "visible" : ""}`}>
+>>>>>>> 177287f (i think its final)
         {children}
       </div>
     </div>

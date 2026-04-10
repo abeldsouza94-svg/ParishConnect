@@ -4,6 +4,7 @@ import "./FamilyProfiles.css";
 import BackButton from "../components/BackButton";
 import Footer from "../components/Footer";
 import UserManual from "../components/UserManual";
+import LoadingOverlay from "../components/LoadingOverlay";
 import { API_BASE_URL } from "../config/api";
 
 function FamilyProfiles() {
@@ -11,6 +12,7 @@ function FamilyProfiles() {
   const [members, setMembers] = useState([]);
   const [familyName, setFamilyName] = useState("Loading...");
   const [manualOpen, setManualOpen] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
     const familyId = localStorage.getItem("familyId");
@@ -27,8 +29,12 @@ function FamilyProfiles() {
           setMembers(currentFamily.members || []);
           setFamilyName(`${currentFamily.head}'s Family`);
         }
+        setIsLoading(false);
       })
-      .catch(() => setFamilyName("Unable to load family"));
+      .catch(() => {
+        setFamilyName("Unable to load family");
+        setIsLoading(false);
+      });
   }, [navigate]);
 
   const openProfile = (member) => {
@@ -46,6 +52,7 @@ function FamilyProfiles() {
 
   return (
     <div className="family-page">
+      <LoadingOverlay isLoading={isLoading} message="Loading family profiles..." />
       {/* HEADER */}
       <header className="family-header">
         <div className="header-top">

@@ -3,6 +3,7 @@ import { useState, useEffect } from "react";
 import "./Home.css";
 import Footer from "../components/Footer";
 import UserManual from "../components/UserManual";
+import LoadingOverlay from "../components/LoadingOverlay";
 import { API_BASE_URL } from "../config/api";
 
 const API_BASE = API_BASE_URL;
@@ -11,42 +12,40 @@ function HomePage() {
   const [announcements, setAnnouncements] = useState([]);
   const [massTimings, setMassTimings] = useState([]);
   const [manualOpen, setManualOpen] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    const fetchAnnouncements = async () => {
+    const fetchData = async () => {
       try {
-        const response = await fetch(`${API_BASE}/announcements`); 
-        if (!response.ok) {
-          throw new Error("Failed to fetch announcements");
-        }
-        const data = await response.json();
-        const sortedAnnouncements = data.sort((a, b) => new Date(b.date) - new Date(a.date));
-        setAnnouncements(sortedAnnouncements);
-      } catch (error) {
-        console.error("Error fetching announcements:", error);
-      }
-    };
-    fetchAnnouncements();
-  }, []);
+        setIsLoading(true);
+        const [annRes, massRes] = await Promise.all([
+          fetch(`${API_BASE}/announcements`),
+          fetch(`${API_BASE}/mass-timings`)
+        ]);
 
-  useEffect(() => {
-    const fetchMassTimings = async () => {
-      try {
-        const response = await fetch(`${API_BASE}/mass-timings`); 
-        if (!response.ok) {
-          throw new Error("Failed to fetch mass timings");
+        if (annRes.ok) {
+          const annData = await annRes.json();
+          const sortedAnnouncements = annData.sort((a, b) => new Date(b.date) - new Date(a.date));
+          setAnnouncements(sortedAnnouncements);
         }
-        const data = await response.json();
-        setMassTimings(data);
+
+        if (massRes.ok) {
+          const massData = await massRes.json();
+          setMassTimings(massData);
+        }
+
+        setIsLoading(false);
       } catch (error) {
-        console.error("Error fetching mass timings:", error);
+        console.error("Error fetching home data:", error);
+        setIsLoading(false);
       }
     };
-    fetchMassTimings();
+    fetchData();
   }, []);
 
   return (
     <div className="home">
+      <LoadingOverlay isLoading={isLoading} message="Loading announcements & mass timings..." />
       {/* NAVBAR */}
       <nav className="navbar">
         <div className="navbar-brand">

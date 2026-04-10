@@ -2,10 +2,12 @@ import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import "./MemberDashboard.css";
 import BackButton from "../components/BackButton";
+import LoadingOverlay from "../components/LoadingOverlay";
 import { API_BASE_URL } from "../config/api";
 
 function MemberDashboard() {
   const [activeTab, setActiveTab] = useState("Sacrament Records");
+  const [isLoading, setIsLoading] = useState(true);
   const [announcements, setAnnouncements] = useState([]);
   const [altarAssignments, setAltarAssignments] = useState([]);
   const [lectorAssignments, setLectorAssignments] = useState([]);
@@ -15,45 +17,60 @@ function MemberDashboard() {
   const userCommunity = localStorage.getItem("userCommunity") || "None";
 
   useEffect(() => {
-    fetch(`${API_BASE_URL}/announcements`)
-      .then(res => res.json())
-      .then(data => {
-        // Filter announcements for the specific community or general ones
-        const filtered = data.filter(a => a.category?.includes(userCommunity) || a.category === "General");
+    const loadAllData = async () => {
+      try {
+        setIsLoading(true);
+        const urls = [
+          `${API_BASE_URL}/announcements`,
+          `${API_BASE_URL}/gallery`,
+          `${API_BASE_URL}/records`
+        ];
+
+        if (userCommunity === "Altar") {
+          urls.push(`${API_BASE_URL}/altar-assignments`);
+        }
+        if (userCommunity === "Lector") {
+          urls.push(`${API_BASE_URL}/lector-assignments`);
+        }
+
+        const responses = await Promise.all(urls.map(url => fetch(url)));
+        const dataList = await Promise.all(responses.map(res => res.json()));
+
+        let idx = 0;
+        // Announcements
+        const filtered = dataList[idx++].filter(a => a.category?.includes(userCommunity) || a.category === "General");
         setAnnouncements(filtered);
-      });
 
-    if (userCommunity === "Altar") {
-      fetch(`${API_BASE_URL}/altar-assignments`)
-        .then(res => res.json())
-        .then(data => setAltarAssignments(data))
-        .catch(err => console.error(err));
-    }
+        // Gallery
+        setGalleryItems(dataList[idx++]);
 
-    if (userCommunity === "Lector") {
-      fetch(`${API_BASE_URL}/lector-assignments`)
-        .then(res => res.json())
-        .then(data => setLectorAssignments(data))
-        .catch(err => console.error(err));
-    }
+        // Records
+        const filtered2 = dataList[idx++].filter(r => r.name === userName);
+        setMyRecords(filtered2);
 
-    fetch(`${API_BASE_URL}/gallery`)
-      .then(res => res.json())
-      .then(data => setGalleryItems(data))
-      .catch(err => console.error(err));
+        // Altar assignments
+        if (userCommunity === "Altar") {
+          setAltarAssignments(dataList[idx++]);
+        }
 
-    fetch(`${API_BASE_URL}/records`)
-      .then(res => res.json())
-      .then(data => {
-        // Filter records belonging to this specific member
-        const filtered = data.filter(r => r.name === userName);
-        setMyRecords(filtered);
-      })
-      .catch(err => console.error(err));
+        // Lector assignments
+        if (userCommunity === "Lector") {
+          setLectorAssignments(dataList[idx++]);
+        }
+
+        setIsLoading(false);
+      } catch (err) {
+        console.error("Error loading member dashboard:", err);
+        setIsLoading(false);
+      }
+    };
+
+    loadAllData();
   }, [userCommunity, userName]);
 
   return (
     <div className="member-container">
+      <LoadingOverlay isLoading={isLoading} message="Loading your dashboard..." />
 
       {/* HEADER */}
       <div className="member-header">

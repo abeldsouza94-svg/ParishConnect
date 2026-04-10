@@ -3,6 +3,7 @@ import { Link } from "react-router-dom";
 import "./LectorHeadDashboard.css";
 import CommunityChat from "./CommunityChat";
 import BackButton from "../components/BackButton";
+import LoadingOverlay from "../components/LoadingOverlay";
 import { API_BASE_URL } from "../config/api";
 
 const API_BASE = API_BASE_URL;
@@ -10,6 +11,7 @@ const API_BASE = API_BASE_URL;
 const LectorHeadDashboard = () => {
 
   const [activeTab, setActiveTab] = useState("Announcements");
+  const [isLoading, setIsLoading] = useState(true);
 
   const [members, setMembers] = useState([]);
   const [notification, setNotification] = useState(null);
@@ -23,27 +25,44 @@ const LectorHeadDashboard = () => {
   const [imageCaption, setImageCaption] = useState("");
 
   useEffect(() => {
-    const loadFamilies = async () => {
+    const loadAllData = async () => {
       try {
-        const response = await fetch(`${API_BASE}/families`);
-        if (!response.ok) throw new Error("Unable to load families");
-        const families = await response.json();
-        const lectors = [];
-        families.forEach(family => {
-          family.members?.forEach(member => {
-            if (member.community?.toLowerCase() === "lector") {
-              lectors.push(member.name);
-            }
+        setIsLoading(true);
+        const [familiesRes, assignmentsRes, galleryRes] = await Promise.all([
+          fetch(`${API_BASE}/families`),
+          fetch(`${API_BASE}/lector-assignments`),
+          fetch(`${API_BASE}/gallery`)
+        ]);
+
+        if (familiesRes.ok) {
+          const families = await familiesRes.json();
+          const lectors = [];
+          families.forEach(family => {
+            family.members?.forEach(member => {
+              if (member.community?.toLowerCase() === "lector") {
+                lectors.push(member.name);
+              }
+            });
           });
-        });
-        setMembers(lectors);
+          setMembers(lectors);
+        }
+
+        if (assignmentsRes.ok) {
+          setLectorAssignments(await assignmentsRes.json());
+        }
+
+        if (galleryRes.ok) {
+          setGalleryItems(await galleryRes.json());
+        }
+
+        setIsLoading(false);
       } catch (err) {
-        console.error(err);
+        console.error("Error loading lector dashboard:", err);
+        setIsLoading(false);
       }
     };
-    loadFamilies();
-    fetchAssignments();
-    fetchGallery();
+
+    loadAllData();
   }, []);
 
   const fetchAssignments = async () => {
@@ -271,6 +290,7 @@ const LectorHeadDashboard = () => {
 
   return (
     <div className="head-container">
+      <LoadingOverlay isLoading={isLoading} message="Loading lector assignments..." />
 
       {/* HEADER */}
       <div className="head-header">

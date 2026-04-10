@@ -2,6 +2,7 @@ import React, { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import "./AdminDashboard.css";
 import BackButton from "../components/BackButton";
+import LoadingOverlay from "../components/LoadingOverlay";
 import { API_BASE_URL } from "../config/api";
 
 const API_BASE = API_BASE_URL;
@@ -9,6 +10,7 @@ const API_BASE = API_BASE_URL;
 const AdminDashboard = () => {
 
 const [activeTab,setActiveTab] = useState("Sacrament Records");
+const [isLoading, setIsLoading] = useState(true);
 const [view,setView] = useState("list");
 const [search,setSearch] = useState("");
 const [sacramentFilter, setSacramentFilter] = useState({ startDate: '', endDate: '', types: [], sortOrder: 'desc' });
@@ -55,6 +57,41 @@ const [editingDonationIdx, setEditingDonationIdx] = useState(null);
 const [editingCommunityIdx, setEditingCommunityIdx] = useState(null);
 const [errors, setErrors] = useState({});
 const [memberErrors, setMemberErrors] = useState({});
+
+useEffect(() => {
+  const loadAllData = async () => {
+    try {
+      setIsLoading(true);
+      const [recordsRes, familiesRes, massRes, donationsRes, annRes, massTimingsRes, blockRes, gallRes] = await Promise.all([
+        fetch(`${API_BASE}/records`),
+        fetch(`${API_BASE}/families`),
+        fetch(`${API_BASE}/mass-bookings`),
+        fetch(`${API_BASE}/donations`),
+        fetch(`${API_BASE}/announcements`),
+        fetch(`${API_BASE}/mass-timings`),
+        fetch(`${API_BASE}/unavailable-dates`),
+        fetch(`${API_BASE}/gallery`)
+      ]);
+
+      if (recordsRes.ok) setRecords(await recordsRes.json());
+      if (familiesRes.ok) setFamilies(await familiesRes.json());
+      if (massRes.ok) setMassBookings(await massRes.json());
+      if (donationsRes.ok) setDonations(await donationsRes.json());
+      if (annRes.ok) setAnnouncements(await annRes.json());
+      if (massTimingsRes.ok) setMassTimings(await massTimingsRes.json());
+      if (blockRes.ok) setUnavailableDates(await blockRes.json());
+      if (gallRes.ok) setGalleryItems(await gallRes.json());
+      
+      setIsLoading(false);
+    } catch (err) {
+      console.error("Error loading admin dashboard data:", err);
+      showNotify("Could not load all data from the server.", "error");
+      setIsLoading(false);
+    }
+  };
+  
+  loadAllData();
+}, []);
 
 useEffect(() => {
   const loadRecords = async () => {
@@ -120,12 +157,6 @@ useEffect(() => {
   // Clear any lingering notifications when the active tab changes
   setNotification(null);
 }, [activeTab]);
-
-const [confirmPopup, setConfirmPopup] = useState({ show: false, msg: "", onConfirm: null });
-const closeConfirm = () => setConfirmPopup({ show: false, msg: "", onConfirm: null });
-const triggerConfirm = (msg, action) => setConfirmPopup({ show: true, msg, onConfirm: action });
-
-
 useEffect(() => {
   const loadHomeContent = async () => {
     try {
@@ -332,6 +363,16 @@ const removeFamilyMember = (index) => {
   setMemberList(memberList.filter((_, i) => i !== index));
 };
 
+const editFamilyMember = (index) => {
+  const member = memberList[index];
+  setMemberForm(member);
+  setMemberList(memberList.filter((_, i) => i !== index));
+  // Scroll to member input section
+  setTimeout(() => {
+    document.querySelector('.member-input-row')?.scrollIntoView({ behavior: 'smooth' });
+  }, 0);
+};
+
 const getNextFamilyId = () => {
   const nextFamilyNumber = families.reduce((max, f) => {
     const match = f.familyId?.match(/^FAM(\d+)$/);
@@ -363,6 +404,14 @@ const handleNameSearch = (e) => {
 const handleSelectSuggestion = (s) => {
   setForm({ ...form, name: s.name, familyId: s.familyId, headName: s.head });
   setNameSuggestions([]);
+};
+
+// Get list of already assigned sacraments for the current person
+const getAssignedSacraments = () => {
+  if (!form.name) return [];
+  return records
+    .filter(r => r.name === form.name && r._id !== form._id) // Exclude current record being edited
+    .map(r => r.type);
 };
 
 const handleEditFamily = (family) => {
@@ -879,6 +928,8 @@ return(
 
 <div className="admin-container">
 
+<LoadingOverlay isLoading={isLoading} message="Loading dashboard..." />
+
 {/* HEADER */}
 
 <div className="admin-header">
@@ -1286,7 +1337,7 @@ view==="list"?(
   <button 
     className="action-btn edit-btn" 
     style={{ padding: '6px 12px', backgroundColor: '#6c4ab6', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer', marginRight: '10px' }} 
-    onClick={() => { setForm(r); setView("edit"); }}>Edit</button>
+    onClick={() => { setForm(r); setView("add"); setNameSuggestions([]); }}>Edit</button>
   <button 
     className="action-btn delete-btn" 
     style={{ padding: '6px 12px', backgroundColor: '#f44336', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer' }}
@@ -1342,11 +1393,11 @@ view==="list"?(
 <label style={{ display: 'block', marginBottom: '5px', fontWeight: '500' }}>Sacrament Type</label>
 <select name="type" style={{ padding: '10px', marginBottom: '20px', borderRadius: '6px', border: errors.type ? '2px solid red' : '1px solid #ddd', width: '100%', boxSizing: 'border-box' }} value={form.type || ""} onChange={handleInputChange}>
   <option value="">-- Select Sacrament --</option>
-  <option value="Baptism">Baptism</option>
-  <option value="First Holy Communion">First Holy Communion</option>
-  <option value="Confirmation">Confirmation</option>
-  <option value="Marriage">Marriage</option>
-  <option value="Holy Orders">Holy Orders</option>
+  <option value="Baptism" disabled={getAssignedSacraments().includes("Baptism")}>Baptism {getAssignedSacraments().includes("Baptism") ? "(Already Assigned)" : ""}</option>
+  <option value="First Holy Communion" disabled={getAssignedSacraments().includes("First Holy Communion")}>First Holy Communion {getAssignedSacraments().includes("First Holy Communion") ? "(Already Assigned)" : ""}</option>
+  <option value="Confirmation" disabled={getAssignedSacraments().includes("Confirmation")}>Confirmation {getAssignedSacraments().includes("Confirmation") ? "(Already Assigned)" : ""}</option>
+  <option value="Marriage" disabled={getAssignedSacraments().includes("Marriage")}>Marriage {getAssignedSacraments().includes("Marriage") ? "(Already Assigned)" : ""}</option>
+  <option value="Holy Orders" disabled={getAssignedSacraments().includes("Holy Orders")}>Holy Orders {getAssignedSacraments().includes("Holy Orders") ? "(Already Assigned)" : ""}</option>
 </select>
 
 <button className="primary-btn" style={{ width: '100%', padding: '12px', backgroundColor: '#6c4ab6', color: 'white', border: 'none', borderRadius: '6px', cursor: 'pointer', fontSize: '1rem', fontWeight: 'bold' }} onClick={handleSaveRecord}>{form._id ? "Save Changes" : "Save Record"}</button>
@@ -1498,9 +1549,12 @@ view==="list"?(
       <h4>Members to add</h4>
       <ul>
         {memberList.map((m, index) => (
-          <li key={index}>
-            {m.name} ({m.relation}) {m.community ? `• ${m.community}` : ""}
-            <button type="button" className="delete" onClick={() => removeFamilyMember(index)}>Remove</button>
+          <li key={index} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingRight: '10px' }}>
+            <span>{m.name} ({m.relation}) {m.community ? `• ${m.community}` : ""}</span>
+            <div style={{ display: 'flex', gap: '8px' }}>
+              <button type="button" className="edit" onClick={() => editFamilyMember(index)} style={{ padding: '4px 8px', backgroundColor: '#6c4ab6', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer', fontSize: '0.8rem' }}>Edit</button>
+              <button type="button" className="delete" onClick={() => removeFamilyMember(index)} style={{ padding: '4px 8px', backgroundColor: '#f44336', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer', fontSize: '0.8rem' }}>Remove</button>
+            </div>
           </li>
         ))}
       </ul>
