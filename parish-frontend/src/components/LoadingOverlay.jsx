@@ -9,9 +9,7 @@ export default function LoadingOverlay({ isLoading, message = "Loading..." }) {
           <div className="loading-overlay-backdrop" />
           <div className="loading-overlay-content">
             <div className="loading-spinner">
-              <div className="spinner-ring"></div>
-              <div className="spinner-ring"></div>
-              <div className="spinner-ring"></div>
+              <img src="/line.png" alt="loading" className="custom-line-loader" />
             </div>
             <p className="loading-message">{message}</p>
           </div>

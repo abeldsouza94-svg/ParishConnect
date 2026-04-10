@@ -57,6 +57,15 @@ const [editingDonationIdx, setEditingDonationIdx] = useState(null);
 const [editingCommunityIdx, setEditingCommunityIdx] = useState(null);
 const [errors, setErrors] = useState({});
 const [memberErrors, setMemberErrors] = useState({});
+const [confirmPopup, setConfirmPopup] = useState({ show: false, msg: '', onConfirm: () => {} });
+
+const triggerConfirm = (msg, onConfirm) => {
+  setConfirmPopup({ show: true, msg, onConfirm });
+};
+
+const closeConfirm = () => {
+  setConfirmPopup({ show: false, msg: '', onConfirm: () => {} });
+};
 
 useEffect(() => {
   const loadAllData = async () => {
