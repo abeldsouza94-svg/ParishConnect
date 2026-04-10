@@ -1522,9 +1522,13 @@ view==="list"?(
   <span>{editingFamily ? form.familyId : getNextFamilyId()}</span>
 </div>
 
-<input type="text" name="head" placeholder="Family Head Name" style={{ padding: '10px', marginBottom: '15px', borderRadius: '6px', border: errors.head ? '2px solid red' : '1px solid #ddd', width: '100%', boxSizing: 'border-box' }} value={form.head || ""} onChange={handleInputChange}/>
-<input type="text" name="phone" placeholder="Phone Number" style={{ padding: '10px', marginBottom: '15px', borderRadius: '6px', border: errors.phone ? '2px solid red' : '1px solid #ddd', width: '100%', boxSizing: 'border-box' }} value={form.phone || ""} onChange={handleInputChange}/>
+<label style={{ display: 'block', marginBottom: '5px', fontWeight: '500' }}>Family Head Name</label>
+<input type="text" name="head" style={{ padding: '10px', marginBottom: '15px', borderRadius: '6px', border: errors.head ? '2px solid red' : '1px solid #ddd', width: '100%', boxSizing: 'border-box' }} value={form.head || ""} onChange={handleInputChange}/>
 
+<label style={{ display: 'block', marginBottom: '5px', fontWeight: '500' }}>Phone Number</label>
+<input type="text" name="phone" style={{ padding: '10px', marginBottom: '15px', borderRadius: '6px', border: errors.phone ? '2px solid red' : '1px solid #ddd', width: '100%', boxSizing: 'border-box' }} value={form.phone || ""} onChange={handleInputChange}/>
+
+<label style={{ display: 'block', marginBottom: '5px', fontWeight: '500' }}>Community Type</label>
 <select name="community" style={{ padding: '10px', marginBottom: '20px', borderRadius: '6px', border: '1px solid #ddd', width: '100%', boxSizing: 'border-box' }} value={form.community || ""} onChange={handleInputChange}>
   <option value="">Select Community Type</option>
       <option value="Altar">Altar</option>
@@ -1532,16 +1536,22 @@ view==="list"?(
       <option value="None">None</option>
 </select>
 
+<label style={{ display: 'block', marginBottom: '5px', fontWeight: '500' }}>Login Password</label>
 <div style={{ display: 'flex', gap: '10px', marginBottom: '20px' }}>
-  <input type="text" name="password" placeholder="Login Password (8 chars)" maxLength="8" style={{ flex: 1, padding: '10px', borderRadius: '6px', border: '1px solid #ddd' }} value={form.password || ""} onChange={handleInputChange}/>
+  <input type="text" name="password" maxLength="8" style={{ flex: 1, padding: '10px', borderRadius: '6px', border: '1px solid #ddd' }} value={form.password || ""} onChange={handleInputChange}/>
   <button type="button" onClick={generateRandomPassword} style={{ padding: '10px 15px', backgroundColor: '#6c4ab6', color: 'white', border: 'none', borderRadius: '6px', cursor: 'pointer', fontSize: '0.9rem', fontWeight: 'bold' }}>Generate</button>
 </div>
 
 <div className="member-section">
   <h3 style={{ marginBottom: '15px' }}>Family Members</h3>
-  <div className="member-input-row" style={{ display: 'flex', gap: '10px', marginBottom: '20px', flexWrap: 'wrap' }}>
-    <input type="text" name="name" placeholder="Member Name" style={{ flex: '1', minWidth: '150px', padding: '10px', borderRadius: '6px', border: memberErrors.name ? '2px solid red' : '1px solid #ddd' }} value={memberForm.name} onChange={handleMemberInputChange}/>
-    <select name="relation" style={{ flex: '1', minWidth: '150px', padding: '10px', borderRadius: '6px', border: memberErrors.relation ? '2px solid red' : '1px solid #ddd' }} value={memberForm.relation} onChange={handleMemberInputChange}>
+  <div style={{ marginBottom: '15px', display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
+    <div style={{ flex: '1', minWidth: '150px' }}>
+      <label style={{ display: 'block', marginBottom: '5px', fontWeight: '500', fontSize: '0.9rem' }}>Member Name</label>
+      <input type="text" name="name" style={{ flex: '1', width: '100%', padding: '10px', borderRadius: '6px', border: memberErrors.name ? '2px solid red' : '1px solid #ddd' }} value={memberForm.name} onChange={handleMemberInputChange}/>
+    </div>
+    <div style={{ flex: '1', minWidth: '150px' }}>
+      <label style={{ display: 'block', marginBottom: '5px', fontWeight: '500', fontSize: '0.9rem' }}>Relation Type</label>
+      <select name="relation" style={{ flex: '1', width: '100%', padding: '10px', borderRadius: '6px', border: memberErrors.relation ? '2px solid red' : '1px solid #ddd' }} value={memberForm.relation} onChange={handleMemberInputChange}>
       <option value="">Select Relation Type</option>
       <option value="Spouse">Spouse</option>
       <option value="Child">Child</option>
@@ -1549,13 +1559,17 @@ view==="list"?(
       <option value="Sibling">Sibling</option>
       <option value="Other">Other</option>
     </select>
-    <select name="community" style={{ flex: '1', minWidth: '150px', padding: '10px', borderRadius: '6px', border: memberErrors.community ? '2px solid red' : '1px solid #ddd' }} value={memberForm.community} onChange={handleMemberInputChange}>
-      <option value="">Select Community Type</option>
-      <option value="Altar">Altar</option>
-      <option value="Lector">Lector</option>
-      <option value="None">None</option>
-    </select>
-    <button type="button" className="add-btn" style={{ padding: '10px 20px', backgroundColor: '#2196f3', color: 'white', border: 'none', borderRadius: '6px', cursor: 'pointer' }} onClick={addFamilyMember}>Add Member</button>
+    </div>
+    <div style={{ flex: '1', minWidth: '150px' }}>
+      <label style={{ display: 'block', marginBottom: '5px', fontWeight: '500', fontSize: '0.9rem' }}>Community Type</label>
+      <select name="community" style={{ width: '100%', padding: '10px', borderRadius: '6px', border: memberErrors.community ? '2px solid red' : '1px solid #ddd' }} value={memberForm.community} onChange={handleMemberInputChange}>
+        <option value="">Select Community Type</option>
+        <option value="Altar">Altar</option>
+        <option value="Lector">Lector</option>
+        <option value="None">None</option>
+      </select>
+    </div>
+    <button type="button" className="add-btn" style={{ padding: '10px 20px', backgroundColor: '#2196f3', color: 'white', border: 'none', borderRadius: '6px', cursor: 'pointer', marginTop: 'auto' }} onClick={addFamilyMember}>Add Member</button>
   </div>
 
   {memberList.length > 0 && (

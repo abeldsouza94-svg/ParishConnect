@@ -3,6 +3,7 @@ import { Link } from "react-router-dom";
 import "./MemberDashboard.css";
 import BackButton from "../components/BackButton";
 import LoadingOverlay from "../components/LoadingOverlay";
+import Footer from "../components/Footer";
 import { API_BASE_URL } from "../config/api";
 
 function MemberDashboard() {
@@ -193,6 +194,8 @@ function MemberDashboard() {
           </div>
         </div>
       )}
+
+      <Footer />
 
     </div>
   );
