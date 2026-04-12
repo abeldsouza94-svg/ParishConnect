@@ -443,72 +443,30 @@ const AltarHeadDashboard = () => {
 
           <h3>Scheduled Duties</h3>
           <div className="assignments-list" style={{marginTop: '15px'}}>
-            {(() => {
-              const today = new Date();
-              today.setHours(0, 0, 0, 0);
-              const upcomingDuties = altarAssignments.filter(a => new Date(a.date) >= today);
-              
-              if (upcomingDuties.length === 0) {
-                return <p style={{color: '#999', fontStyle: 'italic'}}>No upcoming duties scheduled.</p>;
-              }
-
-              return upcomingDuties.map((duty) => (
-                <div key={duty._id} style={{
-                  background: '#f9f9f9', padding: '15px', borderRadius: '10px', marginBottom: '15px', 
-                  display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderLeft: '4px solid #6c4ab6'
-                }}>
-                  <div>
-                    <p style={{fontWeight: 'bold', margin: '0'}}>{new Date(duty.date).toDateString()} at {duty.time}</p>
-                    <p style={{margin: '5px 0 0 0', fontSize: '0.9rem', color: '#666'}}>
-                      Servers: {duty.servers?.join(", ") || duty.assignedServers?.join(", ") || "No servers assigned"}
-                    </p>
-                  </div>
-                  <div style={{display: 'flex', gap: '10px'}}>
-                    <button 
-                      onClick={() => handleEditAssignment(duty)}
-                      style={{padding: '6px 12px', backgroundColor: '#6c4ab6', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer'}}
-                    >Edit</button>
-                    <button 
-                      onClick={() => handleDeleteAssignment(duty._id)}
-                      style={{padding: '6px 12px', backgroundColor: '#f44336', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer'}}
-                    >Delete</button>
-                  </div>
+            {altarAssignments.map((duty) => (
+              <div key={duty._id} style={{
+                background: '#f9f9f9', padding: '15px', borderRadius: '10px', marginBottom: '15px', 
+                display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderLeft: '4px solid #6c4ab6'
+              }}>
+                <div>
+                  <p style={{fontWeight: 'bold', margin: '0'}}>{new Date(duty.date).toDateString()} at {duty.time}</p>
+                  <p style={{margin: '5px 0 0 0', fontSize: '0.9rem', color: '#666'}}>
+                    Servers: {duty.servers.join(", ")}
+                  </p>
                 </div>
-              ));
-            })()}
-          </div>
-
-          <hr className="section-divider" style={{margin: '30px 0'}} />
-
-          <h3>Past Duties</h3>
-          <div className="assignments-list" style={{marginTop: '15px'}}>
-            {(() => {
-              const today = new Date();
-              today.setHours(0, 0, 0, 0);
-              const pastDuties = altarAssignments.filter(a => new Date(a.date) < today).sort((a, b) => new Date(b.date) - new Date(a.date));
-              
-              if (pastDuties.length === 0) {
-                return <p style={{color: '#999', fontStyle: 'italic'}}>No past duties.</p>;
-              }
-
-              return pastDuties.map((duty) => (
-                <div key={duty._id} style={{
-                  background: '#f9f9f9', padding: '15px', borderRadius: '10px', marginBottom: '15px', 
-                  display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderLeft: '4px solid #ccc', opacity: 0.7
-                }}>
-                  <div>
-                    <p style={{fontWeight: 'bold', margin: '0', color: '#999'}}>{new Date(duty.date).toDateString()} at {duty.time}</p>
-                    <p style={{margin: '5px 0 0 0', fontSize: '0.9rem', color: '#999'}}>
-                      Servers: {duty.servers?.join(", ") || duty.assignedServers?.join(", ") || "No servers assigned"}
-                    </p>
-                  </div>
+                <div style={{display: 'flex', gap: '10px'}}>
+                  <button 
+                    onClick={() => handleEditAssignment(duty)}
+                    style={{padding: '6px 12px', backgroundColor: '#6c4ab6', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer'}}
+                  >Edit</button>
                   <button 
                     onClick={() => handleDeleteAssignment(duty._id)}
                     style={{padding: '6px 12px', backgroundColor: '#f44336', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer'}}
                   >Delete</button>
                 </div>
-              ));
-            })()}
+              </div>
+            ))}
+            {altarAssignments.length === 0 && <p style={{color: '#999', fontStyle: 'italic'}}>No duties scheduled yet.</p>}
           </div>
         </div>
       )}

@@ -601,74 +601,30 @@ const LectorHeadDashboard = () => {
 
           <h3>Scheduled Assignments</h3>
           <div className="assignments-list" style={{marginTop: '15px'}}>
-            {(() => {
-              const today = new Date();
-              today.setHours(0, 0, 0, 0);
-              const upcomingAssignments = lectorAssignments.filter(a => new Date(a.date) >= today);
-              
-              if (upcomingAssignments.length === 0) {
-                return <p style={{color: '#999', fontStyle: 'italic'}}>No upcoming readings assigned.</p>;
-              }
-
-              return upcomingAssignments.map((duty) => (
-                <div key={duty._id} style={{
-                  background: '#f9f9f9', padding: '15px', borderRadius: '10px', marginBottom: '15px', 
-                  display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderLeft: '4px solid #6c4ab6'
-                }}>
-                  <div>
-                    <p style={{fontWeight: 'bold', margin: '0'}}>{new Date(duty.date).toDateString()} at {duty.time}</p>
-                    <div style={{margin: '5px 0 0 0', fontSize: '0.85rem', color: '#666'}}>
-                      {duty.readings?.map((r, i) => <div key={i}>• {r.type}: {r.type === "Custom" ? r.custom : r.person}</div>)}
-                      {duty.assignedServers?.map((member, i) => <div key={i}>• {member}</div>)}
-                    </div>
-                  </div>
-                  <div style={{display: 'flex', gap: '10px'}}>
-                    <button 
-                      onClick={() => handleEditAssignment(duty)}
-                      style={{padding: '6px 12px', backgroundColor: '#6c4ab6', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer'}}
-                    >Edit</button>
-                    <button 
-                      onClick={() => handleDeleteAssignment(duty._id)}
-                      style={{padding: '6px 12px', backgroundColor: '#f44336', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer'}}
-                    >Delete</button>
+            {lectorAssignments.map((duty) => (
+              <div key={duty._id} style={{
+                background: '#f9f9f9', padding: '15px', borderRadius: '10px', marginBottom: '15px', 
+                display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderLeft: '4px solid #6c4ab6'
+              }}>
+                <div>
+                  <p style={{fontWeight: 'bold', margin: '0'}}>{new Date(duty.date).toDateString()} at {duty.time}</p>
+                  <div style={{margin: '5px 0 0 0', fontSize: '0.85rem', color: '#666'}}>
+                    {duty.readings.map((r, i) => <div key={i}>• {r.type}: {r.type === "Custom" ? r.custom : r.person}</div>)}
                   </div>
                 </div>
-              ));
-            })()}
-          </div>
-
-          <hr className="section-divider" style={{margin: '30px 0'}} />
-
-          <h3>Past Assignments</h3>
-          <div className="assignments-list" style={{marginTop: '15px'}}>
-            {(() => {
-              const today = new Date();
-              today.setHours(0, 0, 0, 0);
-              const pastAssignments = lectorAssignments.filter(a => new Date(a.date) < today).sort((a, b) => new Date(b.date) - new Date(a.date));
-              
-              if (pastAssignments.length === 0) {
-                return <p style={{color: '#999', fontStyle: 'italic'}}>No past assignments.</p>;
-              }
-
-              return pastAssignments.map((duty) => (
-                <div key={duty._id} style={{
-                  background: '#f9f9f9', padding: '15px', borderRadius: '10px', marginBottom: '15px', 
-                  display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderLeft: '4px solid #ccc', opacity: 0.7
-                }}>
-                  <div>
-                    <p style={{fontWeight: 'bold', margin: '0', color: '#999'}}>{new Date(duty.date).toDateString()} at {duty.time}</p>
-                    <div style={{margin: '5px 0 0 0', fontSize: '0.85rem', color: '#999'}}>
-                      {duty.readings?.map((r, i) => <div key={i}>• {r.type}: {r.type === "Custom" ? r.custom : r.person}</div>)}
-                      {duty.assignedServers?.map((member, i) => <div key={i}>• {member}</div>)}
-                    </div>
-                  </div>
+                <div style={{display: 'flex', gap: '10px'}}>
+                  <button 
+                    onClick={() => handleEditAssignment(duty)}
+                    style={{padding: '6px 12px', backgroundColor: '#6c4ab6', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer'}}
+                  >Edit</button>
                   <button 
                     onClick={() => handleDeleteAssignment(duty._id)}
                     style={{padding: '6px 12px', backgroundColor: '#f44336', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer'}}
                   >Delete</button>
                 </div>
-              ));
-            })()}
+              </div>
+            ))}
+            {lectorAssignments.length === 0 && <p style={{color: '#999', fontStyle: 'italic'}}>No readings assigned yet.</p>}
           </div>
         </div>
       )}

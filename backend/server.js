@@ -43,6 +43,13 @@ const ParishRecordSchema = new mongoose.Schema({
 
 const ParishRecord = mongoose.model("ParishRecord", ParishRecordSchema);
 
+const CommunitySchema = new mongoose.Schema({
+  name: { type: String, required: true, unique: true },
+  responsibleHead: { type: String, default: "Not Assigned" }
+}, { timestamps: true });
+
+const Community = mongoose.model("Community", CommunitySchema);
+
 const FamilySchema = new mongoose.Schema({
   familyId: { type: String, required: true, unique: true },
   head: { type: String, required: true },
@@ -169,6 +176,34 @@ const sendSMS = async (numbers, message) => {
 };
 
 // ROUTES
+app.get("/communities", async (req, res) => {
+  try {
+    const communities = await Community.find().sort({ name: 1 });
+    res.json(communities);
+  } catch (err) {
+    res.status(500).json({ error: "Failed to fetch communities" });
+  }
+});
+
+app.post("/communities", async (req, res) => {
+  try {
+    const newComm = new Community(req.body);
+    await newComm.save();
+    res.status(201).json(newComm);
+  } catch (err) {
+    res.status(500).json({ error: "Failed to create community" });
+  }
+});
+
+app.put("/communities/:id", async (req, res) => {
+  try {
+    const updated = await Community.findByIdAndUpdate(req.params.id, req.body, { new: true });
+    res.json(updated);
+  } catch (err) {
+    res.status(500).json({ error: "Failed to update community" });
+  }
+});
+
 app.get("/messages/:community", async (req, res) => {
   const msgs = await Message.find({
     community: req.params.community,
@@ -320,6 +355,17 @@ app.delete("/announcements/:id", async (req, res) => {
 });
 
 // MASS TIMING ROUTES
+app.get("/assignments-by-date", async (req, res) => {
+  const { date } = req.query;
+  try {
+    const altar = await AltarAssignment.find({ date });
+    const lector = await LectorAssignment.find({ date });
+    res.json({ altar, lector });
+  } catch (err) {
+    res.status(500).json({ error: "Failed to fetch assignments" });
+  }
+});
+
 app.get("/mass-timings", async (req, res) => {
   try {
     const timings = await MassTiming.find();

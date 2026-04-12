@@ -2,7 +2,6 @@ import React, { useState, useEffect } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import "./PriestDashboard.css";
 import BackButton from "../components/BackButton";
-import CommunityChat from "./CommunityChat";
 import LoadingOverlay from "../components/LoadingOverlay";
 import { API_BASE_URL } from "../config/api";
 
@@ -19,10 +18,6 @@ const PriestDashboard = () => {
   
   const [records, setRecords] = useState([]);
   const [families, setFamilies] = useState([]);
-  const [communities, setCommunities] = useState([]);
-  const [altarAssignments, setAltarAssignments] = useState([]);
-  const [lectorAssignments, setLectorAssignments] = useState([]);
-  const [expandedAssignment, setExpandedAssignment] = useState(null);
   const [donationOptions, setDonationOptions] = useState([]);
   const [massBookings, setMassBookings] = useState([]);
   const [donations, setDonations] = useState([]);
@@ -32,7 +27,6 @@ const PriestDashboard = () => {
   const [notification, setNotification] = useState(null);
   const [showFilterPopup, setShowFilterPopup] = useState(false);
   const [fetchError, setFetchError] = useState("");
-  const [chatView, setChatView] = useState(null);
   const [announcementTitle, setAnnouncementTitle] = useState("");
   const [announcementMessage, setAnnouncementMessage] = useState("");
   
@@ -51,33 +45,28 @@ const PriestDashboard = () => {
         const responses = await Promise.all([
           fetch(`${API_BASE}/records`),
           fetch(`${API_BASE}/families`),
-          fetch(`${API_BASE}/communities`),
           fetch(`${API_BASE}/donation-options`),
           fetch(`${API_BASE}/mass-bookings`),
           fetch(`${API_BASE}/donations`),
-          fetch(`${API_BASE}/gallery`),
-          fetch(`${API_BASE}/altar-assignments`),
-          fetch(`${API_BASE}/lector-assignments`)
+          fetch(`${API_BASE}/gallery`)
         ]);
 
-        if (responses[0].ok) setRecords(await responses[0].json());
-        if (responses[1].ok) setFamilies(await responses[1].json());
-        if (responses[2].ok) setCommunities(await responses[2].json());
-        if (responses[3].ok) {
-          setDonationOptions(await responses[3].json());
+        const [recordsRes, familiesRes, donationOptionsRes, massBookingsRes, donationsRes, galleryRes] = responses;
+
+        if (recordsRes.ok) setRecords(await recordsRes.json());
+        if (familiesRes.ok) setFamilies(await familiesRes.json());
+        if (donationOptionsRes.ok) {
+          setDonationOptions(await donationOptionsRes.json());
         } else {
           setDonationOptions([
             { name: "To the Church", desc: "General maintenance and operations." },
             { name: "To Pilar Church", desc: "Support for sister parish missions." },
-            { name: "Good Samaritan Fund", desc: "Assistance for the needy in our community." }
+            { name: "Good Samaritan Fund", desc: "Assistance for the needy." }
           ]);
         }
-        if (responses[4].ok) setMassBookings(await responses[4].json());
-        if (responses[5].ok) setDonations(await responses[5].json());
-        if (responses[6].ok) setGalleryItems(await responses[6].json());
-        if (responses[7].ok) setAltarAssignments(await responses[7].json());
-        if (responses[8].ok) setLectorAssignments(await responses[8].json());
-        
+        if (massBookingsRes.ok) setMassBookings(await massBookingsRes.json());
+        if (donationsRes.ok) setDonations(await donationsRes.json());
+        if (galleryRes.ok) setGalleryItems(await galleryRes.json());
         setIsLoading(false);
       } catch (_err) {
         console.error("Error loading priest dashboard");
@@ -91,7 +80,6 @@ const PriestDashboard = () => {
   useEffect(() => {
     loadRecords();
     loadFamilies();
-    loadCommunities();
     loadDonationOptions();
     loadMassBookings();
     loadDonations();
@@ -120,19 +108,8 @@ const PriestDashboard = () => {
     }
   };
 
-  const loadCommunities = async () => {
-    try {
-      const response = await fetch(`${API_BASE}/communities`);
-      if (response.ok) {
-        const data = await response.json();
-        setCommunities(data);
-      }
-    } catch (_err) {
-      setCommunities([]);
-    }
-  };
 
-  const loadDonationOptions = async () => {
+      const loadDonationOptions = async () => {
     try {
       const response = await fetch(`${API_BASE}/donation-options`);
       if (response.ok) {
@@ -142,7 +119,7 @@ const PriestDashboard = () => {
         setDonationOptions([
           { name: "To the Church", desc: "General maintenance and operations." },
           { name: "To Pilar Church", desc: "Support for sister parish missions." },
-          { name: "Good Samaritan Fund", desc: "Assistance for the needy in our community." }
+          { name: "Good Samaritan Fund", desc: "Assistance for the needy." }
         ]);
       }
     } catch (_err) {
@@ -382,12 +359,6 @@ const formatPhoneForExport = (phone) => {
     filteredDonations = filteredDonations.filter(d => d.donorName?.toLowerCase().includes(search.toLowerCase()));
   }
 
-  if (chatView) {
-    return (
-      <CommunityChat communityName={chatView} />
-    );
-  }
-
   return (
     <div className="priest-container">
       <LoadingOverlay isLoading={isLoading} message="Loading priest dashboard..." />
@@ -397,17 +368,11 @@ const formatPhoneForExport = (phone) => {
           <h1>Diocese Priest Dashboard</h1>
         </div>
         <div className="header-buttons">
-          <Link to="/community-chats">
-            <button className="chat-btn" style={{ marginRight: '10px', background: '#6c4ab6', color: 'white', border: 'none', padding: '10px 18px', borderRadius: '10px', cursor: 'pointer' }}>
-              Community Chat
-            </button>
-          </Link>
-          
         </div>
       </div>
 
       <div className="priest-tabs">
-        {["Announcements", "Sacrament Records", "Families", "Communities", "Donation Options", "Mass Bookings", "Donations Received", "Parish Gallery"].map(tab => (
+        {["Announcements", "Sacrament Records", "Families", "Donation Options", "Mass Bookings", "Donations Received", "Parish Gallery"].map(tab => (
           <button
             key={tab}
             className={activeTab === tab ? "active-tab" : ""}
@@ -554,166 +519,6 @@ const formatPhoneForExport = (phone) => {
                 ))}
               </tbody>
             </table>
-          </div>
-        )}
-
-        {/* COMMUNITIES */}
-        {activeTab === "Communities" && (
-          <div className="priest-card">
-            <h3>Community Members by Ministry</h3>
-              
-              <div style={{ marginTop: '20px', display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '20px' }}>
-                <div className="priest-card" style={{ padding: '20px', border: '1px solid #ddd', borderRadius: '8px' }}>
-                  <h4>Altar Servers</h4>
-                  <div style={{ maxHeight: '200px', overflowY: 'auto' }}>
-                    {families.flatMap(f => f.members?.filter(m => m.community?.toLowerCase() === "altar")) && families.flatMap(f => f.members?.filter(m => m.community?.toLowerCase() === "altar")).length > 0 ? (
-                      <ul style={{ paddingLeft: '20px', margin: '10px 0' }}>
-                        {families.flatMap(f => f.members?.filter(m => m.community?.toLowerCase() === "altar")).map((m, idx) => (
-                          <li key={idx} style={{ marginBottom: '8px' }}>{m.name}</li>
-                        ))}
-                      </ul>
-                    ) : (
-                      <p style={{ color: '#999' }}>No altar servers listed</p>
-                    )}
-                  </div>
-                </div>
-
-                <div className="priest-card" style={{ padding: '20px', border: '1px solid #ddd', borderRadius: '8px' }}>
-                  <h4>Lectors</h4>
-                  <div style={{ maxHeight: '200px', overflowY: 'auto' }}>
-                    {families.flatMap(f => f.members?.filter(m => m.community?.toLowerCase() === "lector")) && families.flatMap(f => f.members?.filter(m => m.community?.toLowerCase() === "lector")).length > 0 ? (
-                      <ul style={{ paddingLeft: '20px', margin: '10px 0' }}>
-                        {families.flatMap(f => f.members?.filter(m => m.community?.toLowerCase() === "lector")).map((m, idx) => (
-                          <li key={idx} style={{ marginBottom: '8px' }}>{m.name}</li>
-                        ))}
-                      </ul>
-                    ) : (
-                      <p style={{ color: '#999' }}>No lectors listed</p>
-                    )}
-                  </div>
-                </div>
-              </div>
-
-              <hr style={{ margin: '30px 0', border: 'none', borderTop: '1px solid #eee' }} />
-
-              <h3 style={{ marginTop: '30px' }}>Upcoming Mass Assignments</h3>
-              <div style={{ marginTop: '15px' }}>
-                {(() => {
-                  const today = new Date();
-                  today.setHours(0, 0, 0, 0);
-                  const upcomingAssignments = [...altarAssignments, ...lectorAssignments]
-                    .filter(a => new Date(a.date) >= today)
-                    .sort((a, b) => {
-                      const dateA = new Date(`${a.date} ${a.time}`);
-                      const dateB = new Date(`${b.date} ${b.time}`);
-                      return dateA - dateB;
-                    });
-
-                  if (upcomingAssignments.length === 0) {
-                    return <p style={{ color: '#999' }}>No upcoming mass assignments</p>;
-                  }
-
-                  return (
-                    <ul style={{ listStyle: 'none', padding: '0', margin: '0' }}>
-                      {upcomingAssignments.map((assignment) => {
-                        const isAltar = altarAssignments.some(alt => alt._id === assignment._id);
-                        const assignmentKey = `${assignment.date}-${assignment.time}-${isAltar ? 'altar' : 'lector'}`;
-                        const isExpanded = expandedAssignment === assignmentKey;
-
-                        return (
-                          <li key={assignmentKey} style={{ marginBottom: '12px', borderLeft: '3px solid #6c4ab6', paddingLeft: '15px' }}>
-                            <div
-                              onClick={() => setExpandedAssignment(isExpanded ? null : assignmentKey)}
-                              style={{
-                                cursor: 'pointer',
-                                display: 'flex',
-                                alignItems: 'center',
-                                gap: '10px',
-                                padding: '12px',
-                                backgroundColor: '#f8f9fa',
-                                borderRadius: '6px',
-                                transition: 'background-color 0.2s'
-                              }}
-                              onMouseOver={(e) => e.currentTarget.style.backgroundColor = '#f0f0f0'}
-                              onMouseOut={(e) => e.currentTarget.style.backgroundColor = '#f8f9fa'}
-                            >
-                              <span style={{ fontSize: '1.2rem', fontWeight: 'bold', color: '#6c4ab6' }}>
-                                {isExpanded ? '▼' : '▶'}
-                              </span>
-                              <div style={{ flex: 1 }}>
-                                <strong>{assignment.date}</strong> at <strong>{assignment.time}</strong>
-                                <span style={{ marginLeft: '10px', fontSize: '0.85rem', color: '#666' }}>
-                                  ({isAltar ? 'Altar Servers' : 'Lectors'})
-                                </span>
-                              </div>
-                            </div>
-
-                            {isExpanded && (
-                              <div style={{ marginTop: '10px', paddingLeft: '15px', backgroundColor: '#f9f9f9', borderRadius: '6px', padding: '12px' }}>
-                                <strong style={{ display: 'block', marginBottom: '8px' }}>Assigned Members:</strong>
-                                {assignment.assignedServers && assignment.assignedServers.length > 0 ? (
-                                  <ul style={{ margin: '0', paddingLeft: '20px' }}>
-                                    {assignment.assignedServers.map((member, memberIdx) => (
-                                      <li key={memberIdx} style={{ marginBottom: '6px' }}>{member}</li>
-                                    ))}
-                                  </ul>
-                                ) : (
-                                  <p style={{ color: '#999', margin: '0' }}>No members assigned</p>
-                                )}
-                              </div>
-                            )}
-                          </li>
-                        );
-                      })}
-                    </ul>
-                  );
-                })()}
-              </div>
-
-              <hr style={{ margin: '30px 0', border: 'none', borderTop: '1px solid #eee' }} />
-
-              <h3 style={{ marginTop: '30px' }}>Past Mass Assignments</h3>
-              <div style={{ marginTop: '15px' }}>
-                {(() => {
-                  const today = new Date();
-                  today.setHours(0, 0, 0, 0);
-                  const pastAssignments = [...altarAssignments, ...lectorAssignments]
-                    .filter(a => new Date(a.date) < today)
-                    .sort((a, b) => {
-                      const dateA = new Date(`${a.date} ${a.time}`);
-                      const dateB = new Date(`${b.date} ${b.time}`);
-                      return dateB - dateA;
-                    });
-
-                  if (pastAssignments.length === 0) {
-                    return <p style={{ color: '#999' }}>No past mass assignments</p>;
-                  }
-
-                  return (
-                    <ul style={{ listStyle: 'none', padding: '0', margin: '0' }}>
-                      {pastAssignments.map((assignment) => {
-                        const isAltar = altarAssignments.some(alt => alt._id === assignment._id);
-                        return (
-                          <li key={`past-${assignment._id}`} style={{ marginBottom: '12px', borderLeft: '3px solid #ccc', paddingLeft: '15px', opacity: 0.7 }}>
-                            <div style={{ padding: '12px', backgroundColor: '#f9f9f9', borderRadius: '6px' }}>
-                              <strong>{assignment.date}</strong> at <strong>{assignment.time}</strong>
-                              <span style={{ marginLeft: '10px', fontSize: '0.85rem', color: '#999' }}>
-                                ({isAltar ? 'Altar Servers' : 'Lectors'})
-                              </span>
-                              {assignment.assignedServers && assignment.assignedServers.length > 0 && (
-                                <div style={{ marginTop: '8px', fontSize: '0.9rem', color: '#666' }}>
-                                  Members: {assignment.assignedServers.join(', ')}
-                                </div>
-                              )}
-                            </div>
-                          </li>
-                        );
-                      })}
-                    </ul>
-                  );
-                })()}
-              </div>
-            </div>
           </div>
         )}
 
