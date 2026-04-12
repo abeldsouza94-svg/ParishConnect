@@ -415,6 +415,24 @@ th, td {
   transition: all 0.2s ease;
 }
 
+/* Deceased Member Styling */
+.member-summary.deceased {
+  opacity: 0.5;
+  text-decoration: line-through;
+  filter: grayscale(30%);
+}
+
+.deceased-member {
+  opacity: 0.5;
+  text-decoration: line-through;
+  transition: opacity 0.2s ease;
+}
+
+.deceased-member:hover {
+  opacity: 0.7;
+}
+}
+
 .family-card input:focus{
   outline: none;
   border-color: #6c4ab6;

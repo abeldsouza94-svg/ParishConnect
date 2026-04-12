@@ -50,7 +50,7 @@ const [massTimings, setMassTimings] = useState([]);
 const [fetchError,setFetchError] = useState("");
 
 const [form,setForm] = useState({});
-const [memberForm,setMemberForm] = useState({ name: "", relation: "", rent: "", community: "" });
+const [memberForm,setMemberForm] = useState({ name: "", relation: "", rent: "", community: "", birthDate: "", deceased: false });
 const [memberList,setMemberList] = useState([]);
 const [editingFamily, setEditingFamily] = useState(null);
 const [editingDonationIdx, setEditingDonationIdx] = useState(null);
@@ -364,7 +364,7 @@ const addFamilyMember = () => {
   }
 
   setMemberList([...memberList, memberForm]);
-  setMemberForm({ name: "", relation: "", community: "" });
+  setMemberForm({ name: "", relation: "", community: "", birthDate: "", deceased: false });
   setMemberErrors({});
 };
 
@@ -374,7 +374,7 @@ const removeFamilyMember = (index) => {
 
 const editFamilyMember = (index) => {
   const member = memberList[index];
-  setMemberForm(member);
+  setMemberForm({ ...member, birthDate: member.birthDate || "", deceased: member.deceased || false });
   setMemberList(memberList.filter((_, i) => i !== index));
   // Scroll to member input section
   setTimeout(() => {
@@ -432,7 +432,7 @@ const handleEditFamily = (family) => {
     password: family.password || "familypass",
     community: headMember?.community || ""
   });
-  setMemberList(family.members?.filter(m => m.relation !== "Head") || []);
+  setMemberList(family.members?.filter(m => m.relation !== "Head")?.map(m => ({ ...m, birthDate: m.birthDate || "", deceased: m.deceased || false })) || []);
   setEditingFamily(family._id);
   setView("add");
 };
@@ -540,6 +540,12 @@ const handleSaveRecord = async ()=>{
     date: form.date || new Date().toISOString().slice(0,10)
   };
 
+  // Add godfather and godmother for baptism records
+  if(form.type === "Baptism") {
+    payload.godfather = form.godfather || "";
+    payload.godmother = form.godmother || "";
+  }
+
   try {
     if (form._id) {
       // For editing: Delete old record and create new one
@@ -634,7 +640,7 @@ const handleAddFamily = async () => {
 
     setView("list");
     setForm({});
-    setMemberForm({ name: "", relation: "", community: "" });
+    setMemberForm({ name: "", relation: "", community: "", birthDate: "", deceased: false });
     setMemberList([]);
     setErrors({});
   } catch (err) {
@@ -962,7 +968,7 @@ return(
         Export to Excel
       </button>
     )}
-    <button className="add-btn" onClick={()=>{setActiveTab("Families"); setView("add"); setEditingFamily(null); setForm({}); setMemberList([]); setMemberForm({ name: "", relation: "", rent: "", community: "" });}}>
+    <button className="add-btn" onClick={()=>{setActiveTab("Families"); setView("add"); setEditingFamily(null); setForm({}); setMemberList([]); setMemberForm({ name: "", relation: "", rent: "", community: "", birthDate: "", deceased: false });}}>
       + Add Family
     </button>
   </div>
@@ -1041,7 +1047,7 @@ setSearch("");
     <button className="new-btn" onClick={() => {
       setEditingDonationIdx(null); setEditingCommunityIdx(null); setErrors({});
       if (activeTab === "Families") {
-        setView("add"); setEditingFamily(null); setForm({}); setMemberList([]); setMemberForm({ name: "", relation: "", community: "" });
+        setView("add"); setEditingFamily(null); setForm({}); setMemberList([]); setMemberForm({ name: "", relation: "", community: "", birthDate: "", deceased: false });
       } else if (activeTab === "Sacrament Records") {
         setView("add"); setForm({ date: new Date().toISOString().slice(0, 10), type: "", name: "", familyId: "" });
       } else {
@@ -1414,6 +1420,32 @@ view==="list"?(
   <option value="Holy Orders" disabled={getAssignedSacraments().includes("Holy Orders")}>Holy Orders {getAssignedSacraments().includes("Holy Orders") ? "(Already Assigned)" : ""}</option>
 </select>
 
+{form.type === "Baptism" && (
+  <div>
+    <label style={{ display: 'block', marginBottom: '5px', fontWeight: '500' }}>Godfather Name</label>
+    <input 
+      type="text" 
+      name="godfather" 
+      placeholder="Enter godfather name" 
+      style={{ padding: '10px', marginBottom: '15px', borderRadius: '6px', border: '1px solid #ddd', width: '100%', boxSizing: 'border-box' }}
+      value={form.godfather || ""} 
+      onChange={handleInputChange}
+      autoComplete="off"
+    />
+    
+    <label style={{ display: 'block', marginBottom: '5px', fontWeight: '500' }}>Godmother Name</label>
+    <input 
+      type="text" 
+      name="godmother" 
+      placeholder="Enter godmother name" 
+      style={{ padding: '10px', marginBottom: '20px', borderRadius: '6px', border: '1px solid #ddd', width: '100%', boxSizing: 'border-box' }}
+      value={form.godmother || ""} 
+      onChange={handleInputChange}
+      autoComplete="off"
+    />
+  </div>
+)}
+
 <button className="primary-btn" style={{ width: '100%', padding: '12px', backgroundColor: '#6c4ab6', color: 'white', border: 'none', borderRadius: '6px', cursor: 'pointer', fontSize: '1rem', fontWeight: 'bold' }} onClick={handleSaveRecord}>{form._id ? "Save Changes" : "Save Record"}</button>
 {form._id && <button className="primary-btn" style={{ width: '100%', marginTop: '10px', backgroundColor: '#ddd', color: '#333', border: 'none', borderRadius: '6px', cursor: 'pointer', fontSize: '1rem', fontWeight: 'bold' }} onClick={() => { setView("list"); setForm({}); setNameSuggestions([]); }}>Cancel</button>}
 
@@ -1454,7 +1486,7 @@ view==="list"?(
 <td>
   <div style={{ maxHeight: '55px', overflowY: 'auto', paddingRight: '5px', scrollbarWidth: 'thin', border: '1px solid #f0f0f0', borderRadius: '4px', padding: '4px' }}>
     {f.members?.map((m, idx) => (
-      <div key={idx} className="member-summary" style={{ fontSize: '0.85rem', marginBottom: '2px', whiteSpace: 'nowrap' }}>
+      <div key={idx} className="member-summary" style={{ fontSize: '0.85rem', marginBottom: '2px', whiteSpace: 'nowrap', opacity: m.deceased ? 0.5 : 1, textDecoration: m.deceased ? 'line-through' : 'none' }}>
         {m.name} ({m.relation}){m.community ? ` • ${m.community}` : ""}
       </div>
     ))}
@@ -1569,6 +1601,16 @@ view==="list"?(
         <option value="None">None</option>
       </select>
     </div>
+    <div style={{ flex: '1', minWidth: '150px' }}>
+      <label style={{ display: 'block', marginBottom: '5px', fontWeight: '500', fontSize: '0.9rem' }}>Birth Date</label>
+      <input type="date" name="birthDate" style={{ flex: '1', width: '100%', padding: '10px', borderRadius: '6px', border: '1px solid #ddd' }} value={memberForm.birthDate || ''} onChange={handleMemberInputChange}/>
+    </div>
+    <div style={{ display: 'flex', alignItems: 'flex-end', gap: '8px', marginBottom: '10px' }}>
+      <label style={{ display: 'flex', alignItems: 'center', gap: '8px', fontWeight: '500', fontSize: '0.9rem', cursor: 'pointer' }}>
+        <input type="checkbox" name="deceased" checked={memberForm.deceased || false} onChange={(e) => setMemberForm({...memberForm, deceased: e.target.checked})} style={{ cursor: 'pointer', width: '18px', height: '18px' }}/>
+        <span>Deceased</span>
+      </label>
+    </div>
     <button type="button" className="add-btn" style={{ padding: '10px 20px', backgroundColor: '#2196f3', color: 'white', border: 'none', borderRadius: '6px', cursor: 'pointer', marginTop: 'auto' }} onClick={addFamilyMember}>Add Member</button>
   </div>
 
@@ -1577,8 +1619,8 @@ view==="list"?(
       <h4>Members to add</h4>
       <ul>
         {memberList.map((m, index) => (
-          <li key={index} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingRight: '10px' }}>
-            <span>{m.name} ({m.relation}) {m.community ? `• ${m.community}` : ""}</span>
+          <li key={index} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingRight: '10px', opacity: m.deceased ? 0.5 : 1, transition: 'opacity 0.2s' }}>
+            <span style={{ textDecoration: m.deceased ? 'line-through' : 'none' }}>{m.name} ({m.relation}) {m.community ? `• ${m.community}` : ""} {m.deceased ? "(Deceased)" : ""}</span>
             <div style={{ display: 'flex', gap: '8px' }}>
               <button type="button" className="edit" onClick={() => editFamilyMember(index)} style={{ padding: '4px 8px', backgroundColor: '#6c4ab6', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer', fontSize: '0.8rem' }}>Edit</button>
               <button type="button" className="delete" onClick={() => removeFamilyMember(index)} style={{ padding: '4px 8px', backgroundColor: '#f44336', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer', fontSize: '0.8rem' }}>Remove</button>
