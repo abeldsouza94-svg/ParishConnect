@@ -17,7 +17,7 @@ class TunnelServer {
     this.httpConnections = new Map(); // connectionId -> { socket, state, buffer }
     this.connectionIdCounter = 0;
 
-    // 加密配置
+    // Encryption configuration
     this.cryptoConfig = {
       algorithm: 'aes-256-gcm',
       key: crypto.scryptSync(this.config.crypto.password, 'salt', 32),
@@ -51,15 +51,15 @@ class TunnelServer {
   }
 
   start() {
-    // TCP 控制服务器
+    // TCP control server
     const server = net.createServer(socket => this.handleControlConnection(socket));
     server.listen(this.config.port, () => {
       log.info('Server', `Control server listening on ${this.config.port}`);
     });
 
-    // HTTP 控制服务器
+    // HTTP control server
     const httpServer = http.createServer((req, res) => { this.handleHttpControlConnection(req, res); });
-    // HTTP 控制服务器 websocket 共享端口服务器
+    // HTTP control server with websocket shared port server
     const wsServer = new ws.Server({ server: httpServer });
     wsServer.on('connection', (ws, request) => { this.handleHttpWsControlConnection(ws, request) });
 
@@ -85,18 +85,18 @@ class TunnelServer {
       host: host
     };
     const headerPacket = Buffer.concat([
-      Buffer.from([0x46]), // http ws 数据处理
+      Buffer.from([0x46]), // HTTP WS data handling
       this.buildConnectionIdBuffer(connectionId),
-      Buffer.from([0x43]), // C 表示JSON头数据
+      Buffer.from([0x43]), // C means JSON header data
       Buffer.from(JSON.stringify(headerJson), 'utf8')
     ]);
     this.sendPacket(tunnelSocket, headerPacket);
 
     ws.on('message', (message) => {
       const dataPacket = Buffer.concat([
-        Buffer.from([0x46]), // http ws 数据处理
+        Buffer.from([0x46]), // HTTP WS data handling
         this.buildConnectionIdBuffer(connectionId),
-        Buffer.from([0x44]), // D 表示数据
+        Buffer.from([0x44]), // D means data
         Buffer.from(message.toString('utf8'), 'utf8')
       ]);
       this.sendPacket(tunnelSocket, dataPacket);
@@ -104,9 +104,9 @@ class TunnelServer {
 
     ws.on('close', () => {
       const endPacket = Buffer.concat([
-        Buffer.from([0x46]), // http ws 数据处理
+        Buffer.from([0x46]), // HTTP WS data handling
         this.buildConnectionIdBuffer(connectionId),
-        Buffer.from([0x45])  // E 表述数据传输完了
+        Buffer.from([0x45])  // E means data transfer complete
       ]);
       this.sendPacket(tunnelSocket, endPacket);
     });
@@ -117,8 +117,8 @@ class TunnelServer {
     const tunnelSocket = this.httpTunnels.get(host);
 
     if (!tunnelSocket) {
-      res.statusCode = 404; // 状态码
-      res.setHeader('Content-Type', 'text/plain'); // 设置响应头
+      res.statusCode = 404; // Status code
+      res.setHeader('Content-Type', 'text/plain'); // Set response header
       res.end('Domain not registered');
       return;
     }
@@ -126,7 +126,7 @@ class TunnelServer {
     const connectionId = this.generateConnectionId();
     this.httpConnections.set(connectionId, { res, host });
 
-    // 协议格式：[命令(0x45)][connectionId(4字节)][子命令][JSON头数据]
+    // Protocol format: [command(0x45)][connectionId(4 bytes)][subcommand][JSON header data]
     const headerJson = {
       method: req.method,
       url: req.url,
@@ -135,19 +135,19 @@ class TunnelServer {
       host: host
     };
     const headerPacket = Buffer.concat([
-      Buffer.from([0x45]), // http 数据处理
+      Buffer.from([0x45]), // HTTP data handling
       this.buildConnectionIdBuffer(connectionId),
-      Buffer.from([0x43]), // C 表示JSON头数据
+      Buffer.from([0x43]), // C means JSON header data
       Buffer.from(JSON.stringify(headerJson), 'utf8')
     ]);
     this.sendPacket(tunnelSocket, headerPacket);
 
-    // 处理内容体
+    // Handle content body
     req.on('data', chunk => {
       const dataPacket = Buffer.concat([
-        Buffer.from([0x45]), // http 数据处理
+        Buffer.from([0x45]), // HTTP data handling
         this.buildConnectionIdBuffer(connectionId),
-        Buffer.from([0x44]), // D 表示数据
+        Buffer.from([0x44]), // D means data
         chunk
       ]);
       this.sendPacket(tunnelSocket, dataPacket);
@@ -155,9 +155,9 @@ class TunnelServer {
 
     req.on('end', () => {
       const endPacket = Buffer.concat([
-        Buffer.from([0x45]), // http 数据处理
+        Buffer.from([0x45]), // HTTP data handling
         this.buildConnectionIdBuffer(connectionId),
-        Buffer.from([0x45])  // E 表述数据传输完了
+        Buffer.from([0x45])  // E means data transfer complete
       ]);
       this.sendPacket(tunnelSocket, endPacket);
     })
@@ -199,14 +199,14 @@ class TunnelServer {
           server.close();
           if(server._sockets) {
             server._sockets.forEach((socket) => {
-              socket.destroy(); // 强制关闭连接 
+              socket.destroy(); // Force close connection 
             });
             server._sockets.clear();
           }
         }
       }
     }
-    // 关闭HTTP隧道
+    // Close HTTP tunnel
     for (const [domain, socket] of this.httpTunnels.entries()) {
       if (socket === clientSocket) {
         log.info('Server', `Closed HTTP tunnel for domain ${domain}`);
@@ -216,29 +216,29 @@ class TunnelServer {
   }
 
   processPacket(clientSocket, packet) {
-    const cmd = packet[0]; // 命令字节始终在首位
+    const cmd = packet[0]; // Command byte is always first
     const payload = packet.slice(1);
 
     switch (cmd) {
-      case 0x52: // 'R' 注册隧道
-        if (payload[0] === 0x48) { // H 表示HTTP注册
+      case 0x52: // 'R' Register tunnel
+        if (payload[0] === 0x48) { // H means HTTP registration
           this.handleHttpRegister(clientSocket, payload.slice(1));
         } else {
           this.handleRegister(clientSocket, payload);
         }
         break;
-      case 0x41: // 'A' ACK确认
-      case 0x44: // 'D' tcp数据传输
+      case 0x41: // 'A' ACK confirmation
+      case 0x44: // 'D' TCP data transmission
         this.handleConnectionData(cmd, payload);
         break;
-      case 0x45: // 'D' http数据传输
+      case 0x45: // 'D' HTTP data transmission
         this.handleHttpConnectionData(cmd, payload);
         break;
-      case 0x46: // 'E' http ws数据传输
+      case 0x46: // 'E' HTTP WS data transmission
         this.handleHttpWsConnectionData(cmd, payload);
         break;
-      case 0x48: // 'H' 心跳包
-        // 收到心跳包后回复相同的心跳包
+      case 0x48: // 'H' Heartbeat packet
+        // Reply with the same heartbeat packet after receiving
         const response = Buffer.alloc(1);
         response.writeUInt8(0x48, 0);
         this.sendPacket(clientSocket, response);
@@ -248,18 +248,18 @@ class TunnelServer {
 
   handleHttpWsConnectionData(cmd, payload){
     const connectionId = payload.readUInt32BE(0);
-    const subCmd = payload[4]; // 子命令
-    const data = payload.slice(5); // 数据
+    const subCmd = payload[4]; // Subcommand
+    const data = payload.slice(5); // Data
     const conn = this.httpConnections.get(connectionId);
     if (!conn) return;
     switch (subCmd) {
-      case 0x43: // 'C' 表示JSON头数据
+      case 0x43: // 'C' means JSON header data
         break;
-      case 0x44: // 'D' 表示数据
+      case 0x44: // 'D' means data
         // 检查是否是第一次写入数据，如果是则需要解析头信息并设置响应头
         conn.ws.send(data.toString('utf8'));
         break;
-      case 0x45: // 'E' 表示结束
+      case 0x45: // 'E' means end
         conn.ws.close();
         this.httpConnections.delete(connectionId);
         break;
@@ -268,20 +268,20 @@ class TunnelServer {
 
   handleHttpConnectionData(cmd, payload){
     const connectionId = payload.readUInt32BE(0);
-    const subCmd = payload[4]; // 子命令
-    const data = payload.slice(5); // 数据
+    const subCmd = payload[4]; // Subcommand
+    const data = payload.slice(5); // Data
     const conn = this.httpConnections.get(connectionId);
     if (!conn) return;
     switch (subCmd) {
-      case 0x43: // 'C' 表示JSON头数据
+      case 0x43: // 'C' means JSON header data
         const headersJson = JSON.parse(data.toString('utf8'));
         conn.res.writeHead(headersJson.statusCode, headersJson.headers);
         break;
-      case 0x44: // 'D' 表示数据
-        // 检查是否是第一次写入数据，如果是则需要解析头信息并设置响应头
+      case 0x44: // 'D' means data
+        // Check if first write, parse header info and set response headers if needed
         conn.res.write(data);
         break;
-      case 0x45: // 'E' 表示HTTP结束
+      case 0x45: // 'E' means HTTP end
         conn.res.end();
         this.httpConnections.delete(connectionId);
         break;
@@ -299,25 +299,25 @@ class TunnelServer {
   }
 
   /**
-   * http 域名注册
+   * HTTP domain registration
    * @param {*} clientSocket 
    * @param {*} payload 
    */
   handleHttpRegister(clientSocket, payload) {
     const domain = payload.toString('utf8');
     if (this.httpTunnels.has(domain)) {
-      this.sendNoticePacket(clientSocket, this.buildNoticeHttpJson(false, domain, '域名已被占用'));
+      this.sendNoticePacket(clientSocket, this.buildNoticeHttpJson(false, domain, 'Domain is already occupied'));
       return;
     }
 
     this.httpTunnels.set(domain, clientSocket);
-    this.sendNoticePacket(clientSocket, this.buildNoticeHttpJson(true, domain, '域名注册成功'));
+    this.sendNoticePacket(clientSocket, this.buildNoticeHttpJson(true, domain, 'Domain registration successful'));
     log.info('Server', `Registered HTTP domain ${domain}`);
   }
 
   createPublicServer(remotePort, clientSocket) {
     if (this.tunnelServers.has(remotePort)) {
-      this.sendNoticePacket(clientSocket, this.buildNoticeTcpJson(false, remotePort, '端口已被占用'));
+      this.sendNoticePacket(clientSocket, this.buildNoticeTcpJson(false, remotePort, 'Port is already occupied'));
       return;
     }
 
@@ -327,7 +327,7 @@ class TunnelServer {
       const connectionId = this.generateConnectionId();
       externalSocket.pause();
 
-      // 初始化连接状态
+      // Initialize connection state
       this.connections.set(connectionId, {
         socket: externalSocket,
         state: 'connecting',
@@ -338,22 +338,22 @@ class TunnelServer {
         }, 5000)
       });
 
-      // 构建CONNECT包（协议版本1）
+      // Build CONNECT packet (protocol version 1)
       const packet = Buffer.alloc(7);
-      packet.writeUInt8(0x43, 0);        // 命令字节
-      packet.writeUInt32BE(connectionId, 1); // 连接ID
-      packet.writeUInt16BE(remotePort, 5);    // 端口号
+      packet.writeUInt8(0x43, 0);        // Command byte
+      packet.writeUInt32BE(connectionId, 1); // Connection ID
+      packet.writeUInt16BE(remotePort, 5);    // Port number
       this.sendPacket(clientSocket, packet);
 
-      // 监听外部连接数据（修复点）
+      // Listen to external connection data (fix point)
       externalSocket.on('data', data => {
         const conn = this.connections.get(connectionId);
         if (!conn) return;
 
-        // 构建DATA包（协议版本1）
+        // Build DATA packet (protocol version 1)
         const dataPacket = Buffer.alloc(5 + data.length);
-        dataPacket.writeUInt8(0x44, 0);       // 命令字节
-        dataPacket.writeUInt32BE(connectionId, 1); // 连接ID
+        dataPacket.writeUInt8(0x44, 0);       // Command byte
+        dataPacket.writeUInt32BE(connectionId, 1); // Connection ID
         data.copy(dataPacket, 5);
         this.sendPacket(clientSocket, dataPacket);
       });
@@ -371,7 +371,7 @@ class TunnelServer {
 
     server.listen(remotePort, () => {
       log.info('Server', `Public server listening on ${remotePort}`);
-      this.sendNoticePacket(clientSocket, this.buildNoticeTcpJson(true, remotePort, '远程端口已开放'));
+      this.sendNoticePacket(clientSocket, this.buildNoticeTcpJson(true, remotePort, 'Remote port is open'));
     });
     server.on('error', (err) => {
       log.error('Server', `Failed to start public server on port ${remotePort}: ${err.message}`);
@@ -380,7 +380,7 @@ class TunnelServer {
     });
     server.on('close', () => {
       log.info('Server', `Public server closed for port ${remotePort}`);
-      this.sendNoticePacket(clientSocket, this.buildNoticeTcpJson(false, remotePort, '远程端口已关闭'));
+      this.sendNoticePacket(clientSocket, this.buildNoticeTcpJson(false, remotePort, 'Remote port is closed'));
       this.tunnels.delete(remotePort); 
       this.tunnelServers.delete(remotePort);
     });
@@ -393,14 +393,14 @@ class TunnelServer {
     if (!conn) return;
 
     switch (cmd) {
-      case 0x41: // ACK处理
+      case 0x41: // ACK processing
         if (conn.state === 'connecting') {
           conn.state = 'ready';
           conn.socket.resume();
           clearTimeout(conn.timer);
         }
         break;
-      case 0x44: // 数据处理
+      case 0x44: // Data processing
         const data = payload.slice(4);
         if (conn.state === 'ready') {
           conn.socket.write(data);
@@ -424,20 +424,20 @@ class TunnelServer {
   }
 
   /**
-   * 发送通知
+   * Send notification
    * @param {*} clientSocket 
    * @param {*} noticeJson 
    */
   sendNoticePacket(clientSocket, noticeJson) {
     const noticeBuffer = Buffer.from(JSON.stringify(noticeJson), 'utf8');
     const dataPacket = Buffer.alloc(1 + noticeBuffer.length);
-    dataPacket.writeUInt8(0x4E, 0);       // 命令字节
+    dataPacket.writeUInt8(0x4E, 0);       // Command byte
     noticeBuffer.copy(dataPacket, 1);
     this.sendPacket(clientSocket, dataPacket);
   }
 
   /**
-   * 构建tcp的通知json
+   * Build TCP notification JSON
    * @param {*} success 
    * @param {*} remotePort 
    * @param {*} message 
@@ -453,7 +453,7 @@ class TunnelServer {
   }
 
   /**
-   * 构建http的通知json
+   * Build HTTP notification JSON
    * @param {*} success 
    * @param {*} remoteDomain 
    * @param {*} message 

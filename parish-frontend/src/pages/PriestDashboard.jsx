@@ -20,6 +20,9 @@ const PriestDashboard = () => {
   const [records, setRecords] = useState([]);
   const [families, setFamilies] = useState([]);
   const [communities, setCommunities] = useState([]);
+  const [altarAssignments, setAltarAssignments] = useState([]);
+  const [lectorAssignments, setLectorAssignments] = useState([]);
+  const [expandedAssignment, setExpandedAssignment] = useState(null);
   const [donationOptions, setDonationOptions] = useState([]);
   const [massBookings, setMassBookings] = useState([]);
   const [donations, setDonations] = useState([]);
@@ -52,7 +55,9 @@ const PriestDashboard = () => {
           fetch(`${API_BASE}/donation-options`),
           fetch(`${API_BASE}/mass-bookings`),
           fetch(`${API_BASE}/donations`),
-          fetch(`${API_BASE}/gallery`)
+          fetch(`${API_BASE}/gallery`),
+          fetch(`${API_BASE}/altar-assignments`),
+          fetch(`${API_BASE}/lector-assignments`)
         ]);
 
         if (responses[0].ok) setRecords(await responses[0].json());
@@ -70,6 +75,8 @@ const PriestDashboard = () => {
         if (responses[4].ok) setMassBookings(await responses[4].json());
         if (responses[5].ok) setDonations(await responses[5].json());
         if (responses[6].ok) setGalleryItems(await responses[6].json());
+        if (responses[7].ok) setAltarAssignments(await responses[7].json());
+        if (responses[8].ok) setLectorAssignments(await responses[8].json());
         
         setIsLoading(false);
       } catch (_err) {
@@ -555,18 +562,114 @@ const formatPhoneForExport = (phone) => {
           <div className="priest-card">
             <h3>Ministries & Communities</h3>
             <div className="grid-view">
-              {communities.length > 0 ? communities.map((c, i) => (
+              {communities.map((c, i) => (
                 <div key={i} className="community-item">
                   <h4>{c.name}</h4>
-                  <p>{c.description}</p>
+                  <p>{c.desc || c.description || "Community ministry"}</p>
+                  {c.head && <p style={{ fontSize: '0.9rem', color: '#666', marginTop: '10px' }}><strong>Head:</strong> {c.head}</p>}
                 </div>
-              )) : (
-                <div>
-                  <div className="community-item"><h4>Altar Servers</h4><p>Ministry of altar service</p></div>
-                  <div className="community-item"><h4>Lectors Ministry</h4><p>Ministry of readings and proclamations</p></div>
-                  <div className="community-item"><h4>Parish Choir</h4><p>Music and worship ministry</p></div>
+              ))}
+              {communities.length === 0 && <p style={{ gridColumn: '1/-1', textAlign: 'center', color: '#999' }}>No communities available</p>}
+            </div>
+
+            <hr style={{ margin: '30px 0', border: 'none', borderTop: '1px solid #eee' }} />
+
+            <div style={{ marginTop: '30px' }}>
+              <h3>Community Members by Ministry</h3>
+              
+              <div style={{ marginTop: '20px', display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '20px' }}>
+                <div className="priest-card" style={{ padding: '20px', border: '1px solid #ddd', borderRadius: '8px' }}>
+                  <h4>Altar Servers</h4>
+                  <div style={{ maxHeight: '200px', overflowY: 'auto' }}>
+                    {families.flatMap(f => f.members?.filter(m => m.community?.toLowerCase() === "altar")) && families.flatMap(f => f.members?.filter(m => m.community?.toLowerCase() === "altar")).length > 0 ? (
+                      <ul style={{ paddingLeft: '20px', margin: '10px 0' }}>
+                        {families.flatMap(f => f.members?.filter(m => m.community?.toLowerCase() === "altar")).map((m, idx) => (
+                          <li key={idx} style={{ marginBottom: '8px' }}>{m.name}</li>
+                        ))}
+                      </ul>
+                    ) : (
+                      <p style={{ color: '#999' }}>No altar servers listed</p>
+                    )}
+                  </div>
                 </div>
-              )}
+
+                <div className="priest-card" style={{ padding: '20px', border: '1px solid #ddd', borderRadius: '8px' }}>
+                  <h4>Lectors</h4>
+                  <div style={{ maxHeight: '200px', overflowY: 'auto' }}>
+                    {families.flatMap(f => f.members?.filter(m => m.community?.toLowerCase() === "lector")) && families.flatMap(f => f.members?.filter(m => m.community?.toLowerCase() === "lector")).length > 0 ? (
+                      <ul style={{ paddingLeft: '20px', margin: '10px 0' }}>
+                        {families.flatMap(f => f.members?.filter(m => m.community?.toLowerCase() === "lector")).map((m, idx) => (
+                          <li key={idx} style={{ marginBottom: '8px' }}>{m.name}</li>
+                        ))}
+                      </ul>
+                    ) : (
+                      <p style={{ color: '#999' }}>No lectors listed</p>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              <hr style={{ margin: '30px 0', border: 'none', borderTop: '1px solid #eee' }} />
+
+              <h3 style={{ marginTop: '30px' }}>Mass Assignments</h3>
+              <div style={{ marginTop: '15px' }}>
+                {altarAssignments.length === 0 && lectorAssignments.length === 0 ? (
+                  <p style={{ color: '#999' }}>No mass assignments scheduled</p>
+                ) : (
+                  <ul style={{ listStyle: 'none', padding: '0', margin: '0' }}>
+                    {[...altarAssignments, ...lectorAssignments].sort((a, b) => {
+                      const dateA = new Date(`${a.date} ${a.time}`);
+                      const dateB = new Date(`${b.date} ${b.time}`);
+                      return dateA - dateB;
+                    }).map((assignment, idx) => {
+                      const isAltar = altarAssignments.some(alt => alt._id === assignment._id);
+                      const assignmentKey = `${assignment.date}-${assignment.time}-${isAltar ? 'altar' : 'lector'}`;
+                      const isExpanded = expandedAssignment === assignmentKey;
+
+                      return (
+                        <li key={assignmentKey} style={{ marginBottom: '12px', borderLeft: '3px solid #6c4ab6', paddingLeft: '15px' }}>
+                          <div
+                            onClick={() => setExpandedAssignment(isExpanded ? null : assignmentKey)}
+                            style={{
+                              cursor: 'pointer',
+                              display: 'flex',
+                              alignItems: 'center',
+                              gap: '10px',
+                              padding: '12px',
+                              backgroundColor: '#f8f9fa',
+                              borderRadius: '6px',
+                              transition: 'background-color 0.2s'
+                            }}
+                            onMouseOver={(e) => e.currentTarget.style.backgroundColor = '#f0f0f0'}
+                            onMouseOut={(e) => e.currentTarget.style.backgroundColor = '#f8f9fa'}
+                          >
+                            <span style={{ fontSize: '1.2rem', fontWeight: 'bold' }}>
+                              {isExpanded ? '▼' : '▶'}
+                            </span>
+                            <div style={{ flex: 1 }}>
+                              <strong>{assignment.date}</strong> at <strong>{assignment.time}</strong>
+                              <span style={{ marginLeft: '10px', fontSize: '0.85rem', color: '#666' }}>
+                                ({isAltar ? 'Altar Servers' : 'Lectors'})
+                              </span>
+                            </div>
+                          </div>
+
+                          {isExpanded && assignment.assignedServers && assignment.assignedServers.length > 0 && (
+                            <div style={{ marginTop: '10px', paddingLeft: '15px', backgroundColor: '#f9f9f9', borderRadius: '6px', padding: '12px' }}>
+                              <strong style={{ display: 'block', marginBottom: '8px' }}>Assigned Members:</strong>
+                              <ul style={{ margin: '0', paddingLeft: '20px' }}>
+                                {assignment.assignedServers.map((member, memberIdx) => (
+                                  <li key={memberIdx} style={{ marginBottom: '6px' }}>{member}</li>
+                                ))}
+                              </ul>
+                            </div>
+                          )}
+                        </li>
+                      );
+                    })}
+                  </ul>
+                )}
+              </div>
             </div>
           </div>
         )}

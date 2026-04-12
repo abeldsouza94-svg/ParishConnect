@@ -71,7 +71,7 @@ useEffect(() => {
   const loadAllData = async () => {
     try {
       setIsLoading(true);
-      const [recordsRes, familiesRes, massRes, donationsRes, annRes, massTimingsRes, blockRes, gallRes] = await Promise.all([
+      const [recordsRes, familiesRes, massRes, donationsRes, annRes, massTimingsRes, blockRes, gallRes, communitiesRes] = await Promise.all([
         fetch(`${API_BASE}/records`),
         fetch(`${API_BASE}/families`),
         fetch(`${API_BASE}/mass-bookings`),
@@ -79,7 +79,8 @@ useEffect(() => {
         fetch(`${API_BASE}/announcements`),
         fetch(`${API_BASE}/mass-timings`),
         fetch(`${API_BASE}/unavailable-dates`),
-        fetch(`${API_BASE}/gallery`)
+        fetch(`${API_BASE}/gallery`),
+        fetch(`${API_BASE}/communities`)
       ]);
 
       if (recordsRes.ok) setRecords(await recordsRes.json());
@@ -90,6 +91,7 @@ useEffect(() => {
       if (massTimingsRes.ok) setMassTimings(await massTimingsRes.json());
       if (blockRes.ok) setUnavailableDates(await blockRes.json());
       if (gallRes.ok) setGalleryItems(await gallRes.json());
+      if (communitiesRes.ok) setCommunities(await communitiesRes.json());
       
       setIsLoading(false);
     } catch (err) {
@@ -184,10 +186,7 @@ useEffect(() => {
   loadHomeContent();
 }, []);
 
-/* ---------------------------
-HOME MANAGEMENT ACTIONS
-----------------------------*/
-
+// Delete announcement from home page
 const handleDeleteAnnouncement = async (id) => {
   triggerConfirm("Are you sure you want to remove this announcement from the home page?", async () => {
     try {
@@ -323,27 +322,10 @@ const handleDeletePhoto = async (id) => {
   });
 };
 
-/* ---------------------------
-DATA
-----------------------------*/
+// State for data management
+const [communities,setCommunities] = useState([]);
 
-const [communities,setCommunities] = useState([
-{
-name:"Altar Servers",
-desc:"Assisting priests during liturgical services.",
-head:"HEAD_ALTAR"
-},
-{
-name:"Lectors Ministry",
-desc:"Assigning Readings to Parish members.",
-head:"HEAD_LECTORS"
-}
-]);
-
-/* ---------------------------
-FORM HANDLING
-----------------------------*/
-
+// Form input handling
 const handleInputChange = (e)=>{
   setForm({...form,[e.target.name]:e.target.value});
 };
@@ -586,8 +568,7 @@ const handleSaveRecord = async ()=>{
   }
 };
 
-/* ADD FAMILY */
-
+// Handle adding/editing family records
 const handleAddFamily = async () => {
   let newErrors = {};
   if(!form.head) newErrors.head = "Head name required";
@@ -799,8 +780,7 @@ const handleSendQuickSms = async () => {
   } catch (err) { showNotify("Failed to send SMS", "error"); }
 };
 
-/* SEARCH FILTERS */
-
+// Filter records based on search criteria
 const filteredRecords = records.filter((r) => {
   const matchesSearch = (r.name?.toLowerCase().includes(search.toLowerCase()) ||
                          r.type?.toLowerCase().includes(search.toLowerCase()) ||
@@ -877,10 +857,7 @@ const filteredDonations = donations.filter((d) => {
   return matchesSearch && matchesDateRange && matchesFund && matchesAmount;
 });
 
-/* ---------------------------
-EXPORT TO EXCEL (CSV)
-----------------------------*/
-
+// Format date for export
 const formatDateForExport = (dateStr) => {
   if (!dateStr) return "";
   try {
@@ -939,10 +916,6 @@ const handleExport = () => {
   document.body.removeChild(link);
   showNotify(`Exported ${dataToExport.length} rows to Excel/CSV`);
 };
-
-/* ---------------------------
-UI
-----------------------------*/
 
 return(
 
@@ -1692,12 +1665,17 @@ view==="list" ? (
 
 <label style={{ display: 'block', marginBottom: '5px', fontWeight: '500' }}>Community Name</label>
 <input name="name" placeholder="e.g., Youth Choir" value={form.name || ""} style={{ padding: '10px', marginBottom: '15px', borderRadius: '6px', border: errors.name ? '2px solid red' : '1px solid #ddd', width: '100%', boxSizing: 'border-box' }} onChange={handleInputChange}/>
-<label style={{ display: 'block', marginBottom: '5px', fontWeight: '500' }}>Assign Head ID</label>
-<input name="head" placeholder="e.g., FAM01" value={form.head || ""} style={{ padding: '10px', marginBottom: '15px', borderRadius: '6px', border: errors.head ? '2px solid red' : '1px solid #ddd', width: '100%', boxSizing: 'border-box' }} onChange={handleInputChange}/>
+<label style={{ display: 'block', marginBottom: '5px', fontWeight: '500' }}>Assign Community Head</label>
+<select name="head" value={form.head || ""} style={{ padding: '10px', marginBottom: '15px', borderRadius: '6px', border: '1px solid #ddd', width: '100%', boxSizing: 'border-box' }} onChange={handleInputChange}>
+  <option value="">Select Community Head</option>
+  {families.flatMap(f => f.members || []).map((m, idx) => (
+    <option key={idx} value={m.name}>{m.name} ({m.relation})</option>
+  ))}
+</select>
 <label style={{ display: 'block', marginBottom: '5px', fontWeight: '500' }}>Description</label>
 <textarea name="desc" rows="3" placeholder="Briefly describe the community..." value={form.desc || ""} style={{ padding: '10px', marginBottom: '20px', borderRadius: '6px', border: errors.desc ? '2px solid red' : '1px solid #ddd', width: '100%', boxSizing: 'border-box', fontFamily: 'inherit' }} onChange={handleInputChange}/>
 
-<button className="primary-btn" style={{ width: '100%', padding: '12px', backgroundColor: '#6c4ab6', color: 'white', border: 'none', borderRadius: '6px', cursor: 'pointer', fontSize: '1rem', fontWeight: 'bold' }} onClick={handleSaveCommunity}>{editingCommunityIdx !== null ? "Save Changes" : "Send Request to Developer"}</button>
+<button className="primary-btn" style={{ width: '100%', padding: '12px', backgroundColor: '#6c4ab6', color: 'white', border: 'none', borderRadius: '6px', cursor: 'pointer', fontSize: '1rem', fontWeight: 'bold' }} onClick={handleSaveCommunity}>{editingCommunityIdx !== null ? "Save Changes" : "Add Community"}</button>
 {editingCommunityIdx !== null && <button className="primary-btn" style={{ width: '100%', marginTop: '10px', backgroundColor: '#ddd', color: '#333' }} onClick={() => {setView("list"); setEditingCommunityIdx(null); setForm({});}}>Cancel</button>}
 
 </div>
