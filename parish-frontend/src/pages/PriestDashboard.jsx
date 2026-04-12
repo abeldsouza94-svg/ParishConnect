@@ -560,22 +560,7 @@ const formatPhoneForExport = (phone) => {
         {/* COMMUNITIES */}
         {activeTab === "Communities" && (
           <div className="priest-card">
-            <h3>Ministries & Communities</h3>
-            <div className="grid-view">
-              {communities.map((c, i) => (
-                <div key={i} className="community-item">
-                  <h4>{c.name}</h4>
-                  <p>{c.desc || c.description || "Community ministry"}</p>
-                  {c.head && <p style={{ fontSize: '0.9rem', color: '#666', marginTop: '10px' }}><strong>Head:</strong> {c.head}</p>}
-                </div>
-              ))}
-              {communities.length === 0 && <p style={{ gridColumn: '1/-1', textAlign: 'center', color: '#999' }}>No communities available</p>}
-            </div>
-
-            <hr style={{ margin: '30px 0', border: 'none', borderTop: '1px solid #eee' }} />
-
-            <div style={{ marginTop: '30px' }}>
-              <h3>Community Members by Ministry</h3>
+            <h3>Community Members by Ministry</h3>
               
               <div style={{ marginTop: '20px', display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '20px' }}>
                 <div className="priest-card" style={{ padding: '20px', border: '1px solid #ddd', borderRadius: '8px' }}>
@@ -611,64 +596,122 @@ const formatPhoneForExport = (phone) => {
 
               <hr style={{ margin: '30px 0', border: 'none', borderTop: '1px solid #eee' }} />
 
-              <h3 style={{ marginTop: '30px' }}>Mass Assignments</h3>
+              <h3 style={{ marginTop: '30px' }}>Upcoming Mass Assignments</h3>
               <div style={{ marginTop: '15px' }}>
-                {altarAssignments.length === 0 && lectorAssignments.length === 0 ? (
-                  <p style={{ color: '#999' }}>No mass assignments scheduled</p>
-                ) : (
-                  <ul style={{ listStyle: 'none', padding: '0', margin: '0' }}>
-                    {[...altarAssignments, ...lectorAssignments].sort((a, b) => {
+                {(() => {
+                  const today = new Date();
+                  today.setHours(0, 0, 0, 0);
+                  const upcomingAssignments = [...altarAssignments, ...lectorAssignments]
+                    .filter(a => new Date(a.date) >= today)
+                    .sort((a, b) => {
                       const dateA = new Date(`${a.date} ${a.time}`);
                       const dateB = new Date(`${b.date} ${b.time}`);
                       return dateA - dateB;
-                    }).map((assignment, idx) => {
-                      const isAltar = altarAssignments.some(alt => alt._id === assignment._id);
-                      const assignmentKey = `${assignment.date}-${assignment.time}-${isAltar ? 'altar' : 'lector'}`;
-                      const isExpanded = expandedAssignment === assignmentKey;
+                    });
 
-                      return (
-                        <li key={assignmentKey} style={{ marginBottom: '12px', borderLeft: '3px solid #6c4ab6', paddingLeft: '15px' }}>
-                          <div
-                            onClick={() => setExpandedAssignment(isExpanded ? null : assignmentKey)}
-                            style={{
-                              cursor: 'pointer',
-                              display: 'flex',
-                              alignItems: 'center',
-                              gap: '10px',
-                              padding: '12px',
-                              backgroundColor: '#f8f9fa',
-                              borderRadius: '6px',
-                              transition: 'background-color 0.2s'
-                            }}
-                            onMouseOver={(e) => e.currentTarget.style.backgroundColor = '#f0f0f0'}
-                            onMouseOut={(e) => e.currentTarget.style.backgroundColor = '#f8f9fa'}
-                          >
-                            <span style={{ fontSize: '1.2rem', fontWeight: 'bold' }}>
-                              {isExpanded ? '▼' : '▶'}
-                            </span>
-                            <div style={{ flex: 1 }}>
+                  if (upcomingAssignments.length === 0) {
+                    return <p style={{ color: '#999' }}>No upcoming mass assignments</p>;
+                  }
+
+                  return (
+                    <ul style={{ listStyle: 'none', padding: '0', margin: '0' }}>
+                      {upcomingAssignments.map((assignment) => {
+                        const isAltar = altarAssignments.some(alt => alt._id === assignment._id);
+                        const assignmentKey = `${assignment.date}-${assignment.time}-${isAltar ? 'altar' : 'lector'}`;
+                        const isExpanded = expandedAssignment === assignmentKey;
+
+                        return (
+                          <li key={assignmentKey} style={{ marginBottom: '12px', borderLeft: '3px solid #6c4ab6', paddingLeft: '15px' }}>
+                            <div
+                              onClick={() => setExpandedAssignment(isExpanded ? null : assignmentKey)}
+                              style={{
+                                cursor: 'pointer',
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: '10px',
+                                padding: '12px',
+                                backgroundColor: '#f8f9fa',
+                                borderRadius: '6px',
+                                transition: 'background-color 0.2s'
+                              }}
+                              onMouseOver={(e) => e.currentTarget.style.backgroundColor = '#f0f0f0'}
+                              onMouseOut={(e) => e.currentTarget.style.backgroundColor = '#f8f9fa'}
+                            >
+                              <span style={{ fontSize: '1.2rem', fontWeight: 'bold', color: '#6c4ab6' }}>
+                                {isExpanded ? '▼' : '▶'}
+                              </span>
+                              <div style={{ flex: 1 }}>
+                                <strong>{assignment.date}</strong> at <strong>{assignment.time}</strong>
+                                <span style={{ marginLeft: '10px', fontSize: '0.85rem', color: '#666' }}>
+                                  ({isAltar ? 'Altar Servers' : 'Lectors'})
+                                </span>
+                              </div>
+                            </div>
+
+                            {isExpanded && (
+                              <div style={{ marginTop: '10px', paddingLeft: '15px', backgroundColor: '#f9f9f9', borderRadius: '6px', padding: '12px' }}>
+                                <strong style={{ display: 'block', marginBottom: '8px' }}>Assigned Members:</strong>
+                                {assignment.assignedServers && assignment.assignedServers.length > 0 ? (
+                                  <ul style={{ margin: '0', paddingLeft: '20px' }}>
+                                    {assignment.assignedServers.map((member, memberIdx) => (
+                                      <li key={memberIdx} style={{ marginBottom: '6px' }}>{member}</li>
+                                    ))}
+                                  </ul>
+                                ) : (
+                                  <p style={{ color: '#999', margin: '0' }}>No members assigned</p>
+                                )}
+                              </div>
+                            )}
+                          </li>
+                        );
+                      })}
+                    </ul>
+                  );
+                })()}
+              </div>
+
+              <hr style={{ margin: '30px 0', border: 'none', borderTop: '1px solid #eee' }} />
+
+              <h3 style={{ marginTop: '30px' }}>Past Mass Assignments</h3>
+              <div style={{ marginTop: '15px' }}>
+                {(() => {
+                  const today = new Date();
+                  today.setHours(0, 0, 0, 0);
+                  const pastAssignments = [...altarAssignments, ...lectorAssignments]
+                    .filter(a => new Date(a.date) < today)
+                    .sort((a, b) => {
+                      const dateA = new Date(`${a.date} ${a.time}`);
+                      const dateB = new Date(`${b.date} ${b.time}`);
+                      return dateB - dateA;
+                    });
+
+                  if (pastAssignments.length === 0) {
+                    return <p style={{ color: '#999' }}>No past mass assignments</p>;
+                  }
+
+                  return (
+                    <ul style={{ listStyle: 'none', padding: '0', margin: '0' }}>
+                      {pastAssignments.map((assignment) => {
+                        const isAltar = altarAssignments.some(alt => alt._id === assignment._id);
+                        return (
+                          <li key={`past-${assignment._id}`} style={{ marginBottom: '12px', borderLeft: '3px solid #ccc', paddingLeft: '15px', opacity: 0.7 }}>
+                            <div style={{ padding: '12px', backgroundColor: '#f9f9f9', borderRadius: '6px' }}>
                               <strong>{assignment.date}</strong> at <strong>{assignment.time}</strong>
-                              <span style={{ marginLeft: '10px', fontSize: '0.85rem', color: '#666' }}>
+                              <span style={{ marginLeft: '10px', fontSize: '0.85rem', color: '#999' }}>
                                 ({isAltar ? 'Altar Servers' : 'Lectors'})
                               </span>
+                              {assignment.assignedServers && assignment.assignedServers.length > 0 && (
+                                <div style={{ marginTop: '8px', fontSize: '0.9rem', color: '#666' }}>
+                                  Members: {assignment.assignedServers.join(', ')}
+                                </div>
+                              )}
                             </div>
-                          </div>
-
-                          {isExpanded && assignment.assignedServers && assignment.assignedServers.length > 0 && (
-                            <div style={{ marginTop: '10px', paddingLeft: '15px', backgroundColor: '#f9f9f9', borderRadius: '6px', padding: '12px' }}>
-                              <strong style={{ display: 'block', marginBottom: '8px' }}>Assigned Members:</strong>
-                              <ul style={{ margin: '0', paddingLeft: '20px' }}>
-                                {assignment.assignedServers.map((member, memberIdx) => (
-                                  <li key={memberIdx} style={{ marginBottom: '6px' }}>{member}</li>
-                                ))}
-                              </ul>
-                            </div>
-                          )}
-                        </li>
-                      );
-                    })}
-                  </ul>
-                )}
+                          </li>
+                        );
+                      })}
+                    </ul>
+                  );
+                })()}
               </div>
             </div>
           </div>
