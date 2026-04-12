@@ -1,4 +1,3 @@
-// ===== IMPORTS =====
 const express = require("express");
 const mongoose = require("mongoose");
 const cors = require("cors");
@@ -16,9 +15,8 @@ app.use(cors({
 // Increase limit for Base64 image uploads
 app.use(express.json({ limit: '10mb' }));
 
-const uri="mongodb://church_db:church_db@ac-gv6yjei-shard-00-00.1n2sw2k.mongodb.net:27017,ac-gv6yjei-shard-00-01.1n2sw2k.mongodb.net:27017,ac-gv6yjei-shard-00-02.1n2sw2k.mongodb.net:27017/?ssl=true&replicaSet=atlas-11v5l2-shard-0&authSource=admin&appName=Cluster0";
-const uri = process.env.MONGODB_URI;
-// CONNECT MONGODB
+const uri = process.env.MONGODB_URI || "mongodb://church_db:church_db@ac-gv6yjei-shard-00-00.1n2sw2k.mongodb.net:27017,ac-gv6yjei-shard-00-01.1n2sw2k.mongodb.net:27017,ac-gv6yjei-shard-00-02.1n2sw2k.mongodb.net:27017/?ssl=true&replicaSet=atlas-11v5l2-shard-0&authSource=admin&appName=Cluster0";
+
 mongoose.connect(uri)
   .then(() => console.log("MongoDB connected"))
   .catch(err => console.log(err));
@@ -654,10 +652,8 @@ app.post("/razorpay-webhook", async (req, res) => {
 const transporter = nodemailer.createTransport({
   service: "gmail",
   auth: {
-    user: "dummyproject.1968s@gmail.com",
-    pass: "jpyghbzfemjchmme" 
-    user: process.env.EMAIL_USER,
-    pass: process.env.EMAIL_PASS 
+    user: process.env.EMAIL_USER || "dummyproject.1968s@gmail.com",
+    pass: process.env.EMAIL_PASS || "jpyghbzfemjchmme"
   }
 });
 
@@ -683,7 +679,6 @@ app.post("/send-request", async (req, res) => {
   }
 });
 
-// ===== SOCKET.IO SETUP =====
 const server = http.createServer(app);
 
 const io = new Server(server, {
@@ -693,7 +688,6 @@ const io = new Server(server, {
   },
 });
 
-// ===== SOCKET EVENTS =====
 io.on("connection", (socket) => {
   console.log("User connected");
 
@@ -713,7 +707,6 @@ io.on("connection", (socket) => {
   });
 });
 
-// ===== START SERVER =====
 server.listen(5000, () => {
   console.log("Server running on port 5000");
 });

@@ -1593,10 +1593,12 @@ view==="list"?(
       <label style={{ display: 'block', marginBottom: '5px', fontWeight: '500', fontSize: '0.9rem' }}>Birth Date</label>
       <input type="date" name="headBirthDate" style={{ width: '100%', padding: '10px', borderRadius: '6px', border: '1px solid #ddd' }} value={form.headBirthDate || ""} onChange={handleInputChange}/>
     </div>
-    <div style={{ flex: 1, minWidth: '150px' }}>
-      <label style={{ display: 'block', marginBottom: '5px', fontWeight: '500', fontSize: '0.9rem' }}>Death Date</label>
-      <input type="date" name="headDeathDate" style={{ width: '100%', padding: '10px', borderRadius: '6px', border: '1px solid #ddd' }} value={form.headDeathDate || ""} onChange={handleInputChange}/>
-    </div>
+    {form.headDeceased && (
+      <div style={{ flex: 1, minWidth: '150px' }}>
+        <label style={{ display: 'block', marginBottom: '5px', fontWeight: '500', fontSize: '0.9rem' }}>Death Date</label>
+        <input type="date" name="headDeathDate" style={{ width: '100%', padding: '10px', borderRadius: '6px', border: '1px solid #ddd' }} value={form.headDeathDate || ""} onChange={handleInputChange}/>
+      </div>
+    )}
     <div style={{ flex: '0.5', minWidth: '100px', display: 'flex', alignItems: 'flex-end' }}>
       <label style={{ display: 'flex', alignItems: 'center', gap: '8px', fontWeight: '500', fontSize: '0.9rem', padding: '10px', backgroundColor: 'white', borderRadius: '6px', cursor: 'pointer', border: '1px solid #ddd', width: '100%', justifyContent: 'center' }}>
         <input 
@@ -1791,7 +1793,12 @@ view==="list" ? (
             fullId: `${f.familyId}|${m.name}`
           })) || []
         )
-        .filter(m => m.community === communities[editingCommunityIdx]?.name)
+        .filter(m => {
+          const communityName = communities[editingCommunityIdx]?.name;
+          const altarMatch = m.community === "Altar" && communityName === "Altar Servers";
+          const lectorMatch = m.community === "Lector" && communityName === "Lectors Ministry";
+          return altarMatch || lectorMatch;
+        })
         .filter(m => m.name.toLowerCase().includes((form.memberSearch || "").toLowerCase()))
         .map((m, idx) => (
           <option key={idx} value={m.fullId}>

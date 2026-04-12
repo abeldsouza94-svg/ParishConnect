@@ -27,6 +27,7 @@ const PriestDashboard = () => {
   const [selectedImage, setSelectedImage] = useState(null);
   const [imageCaption, setImageCaption] = useState("");
   const [expandedCommunity, setExpandedCommunity] = useState(null);
+  const [expandedFamily, setExpandedFamily] = useState(null);
   const [notification, setNotification] = useState(null);
   const [showFilterPopup, setShowFilterPopup] = useState(false);
   const [fetchError, setFetchError] = useState("");
