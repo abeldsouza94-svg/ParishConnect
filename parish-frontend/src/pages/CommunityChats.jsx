@@ -8,10 +8,14 @@ function CommunityChats() {
   const familyId = localStorage.getItem("familyId");
   const userCommunity = localStorage.getItem("userCommunity") || "None";
 
-  // Restrict chats: Everyone sees Parish, but only their own ministry
+  // Restrict chats: Everyone sees Parish, but access depends on role/community
   let userCommunities = ["Parish"];
 
   if (familyId === "ADMIN" || familyId === "ADMIN01") {
+    userCommunities = ["Parish", "Altar Servers", "Lectors Ministry"];
+  }
+  else if (familyId === "PRIEST") {
+    // Priests have access to all communities
     userCommunities = ["Parish", "Altar Servers", "Lectors Ministry"];
   }
   else if (familyId === "HEAD_ALTAR") {

@@ -26,7 +26,7 @@ const PriestDashboard = () => {
   const [galleryItems, setGalleryItems] = useState([]);
   const [selectedImage, setSelectedImage] = useState(null);
   const [imageCaption, setImageCaption] = useState("");
-  const [expandedFamily, setExpandedFamily] = useState(null);
+  const [expandedCommunity, setExpandedCommunity] = useState(null);
   const [notification, setNotification] = useState(null);
   const [showFilterPopup, setShowFilterPopup] = useState(false);
   const [fetchError, setFetchError] = useState("");
@@ -579,62 +579,127 @@ const formatPhoneForExport = (phone) => {
         {activeTab === "Communities" && (
           <div className="priest-card">
             <h3>Ministries & Communities</h3>
-            <div className="grid-view">
+            <p style={{ color: '#666', fontSize: '0.9rem', marginBottom: '15px' }}>Click on a community to view members. Access community chats from Community Chat section.</p>
+            
+            <div style={{ border: '1px solid #eee', borderRadius: '10px', overflow: 'hidden' }}>
               {communities && communities.length > 0 ? communities.map((c, i) => (
-                <div key={i} className="community-item" style={{ padding: '16px', border: '1px solid #eee', borderRadius: '10px', backgroundColor: '#f9f9f9' }}>
-                  <h4 style={{ margin: '0 0 8px 0', color: '#2d3281' }}>{c.name}</h4>
-                  <p style={{ margin: '0 0 10px 0', color: '#666', fontSize: '0.9rem' }}>{c.desc || c.description || "Community ministry"}</p>
-                  <div style={{ paddingTop: '10px', borderTop: '1px solid #ddd' }}>
-                    <p style={{ margin: '8px 0', fontSize: '0.85rem', color: '#555' }}>
-                      <strong>Head:</strong> {c.head || "Not assigned"}
-                    </p>
-                    <div style={{ display: 'flex', gap: '8px', marginTop: '10px' }}>
-                      <button 
-                        onClick={() => setChatView(c.name)}
-                        style={{ flex: 1, padding: '8px 12px', backgroundColor: '#6c4ab6', color: 'white', border: 'none', borderRadius: '6px', fontSize: '0.85rem', cursor: 'pointer' }}
-                      >
-                        Chat
-                      </button>
+                <div key={i} style={{ borderBottom: i < communities.length - 1 ? '1px solid #eee' : 'none' }}>
+                  <div 
+                    onClick={() => setExpandedCommunity(expandedCommunity === i ? null : i)}
+                    style={{ 
+                      padding: '16px', 
+                      backgroundColor: '#f9f9f9', 
+                      cursor: 'pointer', 
+                      display: 'flex', 
+                      justifyContent: 'space-between',
+                      alignItems: 'center',
+                      transition: 'background-color 0.2s'
+                    }}
+                    onMouseOver={(e) => e.currentTarget.style.backgroundColor = '#f0f0f0'}
+                    onMouseOut={(e) => e.currentTarget.style.backgroundColor = '#f9f9f9'}
+                  >
+                    <div style={{ flex: 1 }}>
+                      <h4 style={{ margin: '0 0 4px 0', color: '#2d3281' }}>
+                        {expandedCommunity === i ? '▼' : '▶'} {c.name}
+                      </h4>
+                      <p style={{ margin: '0px', color: '#666', fontSize: '0.9rem' }}>
+                        Head: {c.head || "Not assigned"} | {c.members?.length || 'No'} members
+                      </p>
                     </div>
                   </div>
+                  
+                  {expandedCommunity === i && (
+                    <div style={{ padding: '16px', backgroundColor: 'white' }}>
+                      <p style={{ margin: '0 0 12px 0', color: '#666', fontSize: '0.85rem' }}>{c.desc || c.description || "Community ministry"}</p>
+                      <h5 style={{ marginTop: '0', marginBottom: '12px', color: '#2d3281' }}>Members</h5>
+                      <ul style={{ margin: '0', paddingLeft: '20px' }}>
+                        {c.members && c.members.length > 0 ? (
+                          c.members.map((m, idx) => (
+                            <li key={idx} style={{ marginBottom: '6px', opacity: m.deceased ? 0.6 : 1, textDecoration: m.deceased ? 'line-through' : 'none', fontSize: '0.9rem' }}>
+                              <strong>{m.name}</strong> {m.community && <span style={{ color: '#666' }}>• {m.community}</span>}
+                            </li>
+                          ))
+                        ) : (
+                          <li style={{ color: '#999', fontStyle: 'italic' }}>No members yet</li>
+                        )}
+                      </ul>
+                    </div>
+                  )}
                 </div>
               )) : (
                 <>
-                  <div className="community-item" style={{ padding: '16px', border: '1px solid #eee', borderRadius: '10px', backgroundColor: '#f9f9f9' }}>
-                    <h4 style={{ margin: '0 0 8px 0', color: '#2d3281' }}>Altar Servers</h4>
-                    <p style={{ margin: '0 0 10px 0', color: '#666', fontSize: '0.9rem' }}>Ministry of altar service</p>
-                    <div style={{ paddingTop: '10px', borderTop: '1px solid #ddd' }}>
-                      <p style={{ margin: '8px 0', fontSize: '0.85rem', color: '#555' }}>
-                        <strong>Head:</strong> To be assigned
-                      </p>
-                      <div style={{ display: 'flex', gap: '8px', marginTop: '10px' }}>
-                        <button 
-                          onClick={() => setChatView("Altar")}
-                          style={{ flex: 1, padding: '8px 12px', backgroundColor: '#6c4ab6', color: 'white', border: 'none', borderRadius: '6px', fontSize: '0.85rem', cursor: 'pointer' }}
-                        >
-                          Chat
-                        </button>
+                  <div style={{ borderBottom: '1px solid #eee' }}>
+                    <div 
+                      onClick={() => setExpandedCommunity(expandedCommunity === 0 ? null : 0)}
+                      style={{ 
+                        padding: '16px', 
+                        backgroundColor: '#f9f9f9', 
+                        cursor: 'pointer', 
+                        display: 'flex', 
+                        justifyContent: 'space-between',
+                        alignItems: 'center',
+                      }}
+                    >
+                      <div style={{ flex: 1 }}>
+                        <h4 style={{ margin: '0 0 4px 0', color: '#2d3281' }}>
+                          {expandedCommunity === 0 ? '▼' : '▶'} Altar Servers
+                        </h4>
+                        <p style={{ margin: '0px', color: '#666', fontSize: '0.9rem' }}>Head: To be assigned</p>
                       </div>
                     </div>
+                    {expandedCommunity === 0 && (
+                      <div style={{ padding: '16px', backgroundColor: 'white' }}>
+                        <p style={{ margin: '0 0 12px 0', color: '#666', fontSize: '0.85rem' }}>Ministry of altar service during liturgical celebrations</p>
+                        <h5 style={{ marginTop: '0', marginBottom: '12px', color: '#2d3281' }}>Members</h5>
+                        <ul style={{ margin: '0', paddingLeft: '20px' }}>
+                          {families.flatMap(f => f.members?.filter(m => m.community === 'Altar').map(m => (
+                            <li key={`${f.familyId}-${m.name}`} style={{ marginBottom: '6px', fontSize: '0.9rem', opacity: m.deceased ? 0.6 : 1, textDecoration: m.deceased ? 'line-through' : 'none' }}>
+                              <strong>{m.name}</strong> <span style={{ color: '#666' }}>• {f.head}'s family</span>
+                            </li>
+                          )) || [])}
+                        </ul>
+                      </div>
+                    )}
                   </div>
-                  <div className="community-item" style={{ padding: '16px', border: '1px solid #eee', borderRadius: '10px', backgroundColor: '#f9f9f9' }}>
-                    <h4 style={{ margin: '0 0 8px 0', color: '#2d3281' }}>Lectors Ministry</h4>
-                    <p style={{ margin: '0 0 10px 0', color: '#666', fontSize: '0.9rem' }}>Ministry of readings and proclamations</p>
-                    <div style={{ paddingTop: '10px', borderTop: '1px solid #ddd' }}>
-                      <p style={{ margin: '8px 0', fontSize: '0.85rem', color: '#555' }}>
-                        <strong>Head:</strong> To be assigned
-                      </p>
-                      <div style={{ display: 'flex', gap: '8px', marginTop: '10px' }}>
-                        <button  onClick={() => setChatView("Lector")}
-                          style={{ flex: 1, padding: '8px 12px', backgroundColor: '#6c4ab6', color: 'white', border: 'none', borderRadius: '6px', fontSize: '0.85rem', cursor: 'pointer' }}
-                        >
-                          Chat
-                        </button>
+                  <div>
+                    <div 
+                      onClick={() => setExpandedCommunity(expandedCommunity === 1 ? null : 1)}
+                      style={{ 
+                        padding: '16px', 
+                        backgroundColor: '#f9f9f9', 
+                        cursor: 'pointer', 
+                        display: 'flex', 
+                        justifyContent: 'space-between',
+                        alignItems: 'center',
+                      }}
+                    >
+                      <div style={{ flex: 1 }}>
+                        <h4 style={{ margin: '0 0 4px 0', color: '#2d3281' }}>
+                          {expandedCommunity === 1 ? '▼' : '▶'} Lectors Ministry
+                        </h4>
+                        <p style={{ margin: '0px', color: '#666', fontSize: '0.9rem' }}>Head: To be assigned</p>
                       </div>
                     </div>
+                    {expandedCommunity === 1 && (
+                      <div style={{ padding: '16px', backgroundColor: 'white' }}>
+                        <p style={{ margin: '0 0 12px 0', color: '#666', fontSize: '0.85rem' }}>Ministry of readings and proclamations during mass</p>
+                        <h5 style={{ marginTop: '0', marginBottom: '12px', color: '#2d3281' }}>Members</h5>
+                        <ul style={{ margin: '0', paddingLeft: '20px' }}>
+                          {families.flatMap(f => f.members?.filter(m => m.community === 'Lector').map(m => (
+                            <li key={`${f.familyId}-${m.name}`} style={{ marginBottom: '6px', fontSize: '0.9rem', opacity: m.deceased ? 0.6 : 1, textDecoration: m.deceased ? 'line-through' : 'none' }}>
+                              <strong>{m.name}</strong> <span style={{ color: '#666' }}>• {f.head}'s family</span>
+                            </li>
+                          )) || [])}
+                        </ul>
+                      </div>
+                    )}
                   </div>
                 </>
               )}
+            </div>
+
+            <div style={{ marginTop: '20px', padding: '15px', backgroundColor: '#f5f5f5', borderRadius: '8px' }}>
+              <p style={{ margin: '0 0 12px 0', color: '#666', fontSize: '0.85rem' }}>Access community chats from <strong>Community Chat</strong> section (top menu)</p>
             </div>
           </div>
         )}

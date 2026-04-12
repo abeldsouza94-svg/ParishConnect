@@ -3,6 +3,7 @@ const express = require("express");
 const mongoose = require("mongoose");
 const cors = require("cors");
 const http = require("http");
+require('dotenv').config();
 const nodemailer = require("nodemailer");
 const { Server } = require("socket.io");
 
@@ -16,6 +17,7 @@ app.use(cors({
 app.use(express.json({ limit: '10mb' }));
 
 const uri="mongodb://church_db:church_db@ac-gv6yjei-shard-00-00.1n2sw2k.mongodb.net:27017,ac-gv6yjei-shard-00-01.1n2sw2k.mongodb.net:27017,ac-gv6yjei-shard-00-02.1n2sw2k.mongodb.net:27017/?ssl=true&replicaSet=atlas-11v5l2-shard-0&authSource=admin&appName=Cluster0";
+const uri = process.env.MONGODB_URI;
 // CONNECT MONGODB
 mongoose.connect(uri)
   .then(() => console.log("MongoDB connected"))
@@ -168,6 +170,7 @@ const sendSMS = async (numbers, message) => {
       method: "POST",
       headers: {
         "authorization": "dkxRBi5VEam49qSFhYM60zsZGANT7cpnotDfjwrg2lLQb1yvHKIWr2lVpUkXMx9qGCn0Qgt53K16PJmY",
+        "authorization": process.env.FAST2SMS_KEY,
         "Content-Type": "application/json"
       },
       body: JSON.stringify({
@@ -653,6 +656,8 @@ const transporter = nodemailer.createTransport({
   auth: {
     user: "dummyproject.1968s@gmail.com",
     pass: "jpyghbzfemjchmme" 
+    user: process.env.EMAIL_USER,
+    pass: process.env.EMAIL_PASS 
   }
 });
 

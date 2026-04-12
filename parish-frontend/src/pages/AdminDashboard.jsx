@@ -436,7 +436,10 @@ const handleEditFamily = (family) => {
     head: family.head,
     phone: family.phone,
     password: family.password || "familypass",
-    community: headMember?.community || ""
+    community: headMember?.community || "",
+    headBirthDate: headMember?.birthDate || "",
+    headDeathDate: headMember?.deathDate || "",
+    headDeceased: headMember?.deceased || false
   });
   setMemberList(family.members?.filter(m => m.relation !== "Head") || []);
   setEditingFamily(family._id);
@@ -599,14 +602,39 @@ const handleAddFamily = async () => {
     return;
   }
 
-  const familyMembers = [
-    { name: form.head, relation: "Head", community: form.community || "" },
+  let familyMembers = [
+    { name: form.head, relation: "Head", community: form.community || "", birthDate: form.headBirthDate || "", deathDate: form.headDeathDate || "", deceased: form.headDeceased || false },
     ...memberList
   ];
 
+  // Auto-promote oldest member if head is deceased
+  let newHead = form.head;
+  if (form.headDeceased && form.headDeathDate) {
+    // Find all other members with birth dates
+    const validMembers = familyMembers.filter(m => m.birthDate && m.name !== form.head);
+    
+    if (validMembers.length > 0) {
+      // Sort by birth date (oldest first)
+      const oldestMember = validMembers.reduce((oldest, current) => {
+        return new Date(current.birthDate) < new Date(oldest.birthDate) ? current : oldest;
+      });
+      
+      // Promote oldest member as new head
+      newHead = oldestMember.name;
+      familyMembers = familyMembers.map(m => 
+        m.name === oldestMember.name 
+          ? { ...m, relation: "Head" }
+          : m.name === form.head
+          ? { ...m, relation: "Former Head" }
+          : m
+      );
+      showNotify(`${oldestMember.name} promoted as new head (${form.head} marked deceased)`);
+    }
+  }
+
   const payload = {
     familyId: editingFamily ? form.familyId : getNextFamilyId(),
-    head: form.head,
+    head: newHead,
     phone: form.phone,
     password: (form.password && form.password.trim() !== "") ? form.password : "familypass",
     members: familyMembers
@@ -1558,6 +1586,37 @@ view==="list"?(
   <button type="button" onClick={generateRandomPassword} style={{ padding: '10px 15px', backgroundColor: '#6c4ab6', color: 'white', border: 'none', borderRadius: '6px', cursor: 'pointer', fontSize: '0.9rem', fontWeight: 'bold' }}>Generate</button>
 </div>
 
+<div style={{ backgroundColor: '#f5f5f5', padding: '15px', borderRadius: '8px', marginBottom: '20px' }}>
+  <h4 style={{ margin: '0 0 15px 0', color: '#2d3281' }}>Family Head Details</h4>
+  <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
+    <div style={{ flex: 1, minWidth: '150px' }}>
+      <label style={{ display: 'block', marginBottom: '5px', fontWeight: '500', fontSize: '0.9rem' }}>Birth Date</label>
+      <input type="date" name="headBirthDate" style={{ width: '100%', padding: '10px', borderRadius: '6px', border: '1px solid #ddd' }} value={form.headBirthDate || ""} onChange={handleInputChange}/>
+    </div>
+    <div style={{ flex: 1, minWidth: '150px' }}>
+      <label style={{ display: 'block', marginBottom: '5px', fontWeight: '500', fontSize: '0.9rem' }}>Death Date</label>
+      <input type="date" name="headDeathDate" style={{ width: '100%', padding: '10px', borderRadius: '6px', border: '1px solid #ddd' }} value={form.headDeathDate || ""} onChange={handleInputChange}/>
+    </div>
+    <div style={{ flex: '0.5', minWidth: '100px', display: 'flex', alignItems: 'flex-end' }}>
+      <label style={{ display: 'flex', alignItems: 'center', gap: '8px', fontWeight: '500', fontSize: '0.9rem', padding: '10px', backgroundColor: 'white', borderRadius: '6px', cursor: 'pointer', border: '1px solid #ddd', width: '100%', justifyContent: 'center' }}>
+        <input 
+          type="checkbox" 
+          name="headDeceased" 
+          style={{ cursor: 'pointer', width: '16px', height: '16px' }}
+          checked={form.headDeceased || false}
+          onChange={(e) => {
+            setForm({...form, headDeceased: e.target.checked});
+            if (e.target.checked && !form.headDeathDate) {
+              showNotify("Please enter death date", "warning");
+            }
+          }}
+        />
+        Deceased
+      </label>
+    </div>
+  </div>
+</div>
+
 <div className="member-section">
   <h3 style={{ marginBottom: '15px' }}>Family Members</h3>
   <div style={{ marginBottom: '15px', display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
@@ -1699,50 +1758,56 @@ view==="list" ? (
 
 {form.assignHeadMode ? (
   <>
-    <label style={{ display: 'block', marginBottom: '5px', fontWeight: '500' }}>Select Family Head</label>
-    <select 
-      value={form.selectedHeadName || ""} 
-      onChange={(e) => {
-        const selectedName = e.target.value;
-        const family = families.find(f => f.head === selectedName);
-        setForm({ ...form, selectedHeadName, headFamily: family?._id });
-      }}
-      style={{ padding: '10px', marginBottom: '20px', borderRadius: '6px', border: '1px solid #ddd', width: '100%', boxSizing: 'border-box' }}
-    >
-      <option value="">-- Select a Family Head --</option>
-      {families.map((f, idx) => (
-        <option key={idx} value={f.head}>{f.head} ({f.familyId})</option>
-      ))}
-    </select>
+    <p style={{ marginBottom: '15px', color: '#666', fontSize: '0.9rem' }}>Select from members of <strong>{communities[editingCommunityIdx]?.name}</strong> community</p>
+    
+    <label style={{ display: 'block', marginBottom: '5px', fontWeight: '500' }}>Search or Select Community Member</label>
+    <input 
+      type="text"
+      placeholder="Type member name..."
+      value={form.memberSearch || ""}
+      onChange={(e) => setForm({ ...form, memberSearch: e.target.value })}
+      style={{ padding: '10px', marginBottom: '15px', borderRadius: '6px', border: '1px solid #ddd', width: '100%', boxSizing: 'border-box' }}
+    />
 
-    <label style={{ display: 'block', marginBottom: '5px', fontWeight: '500' }}>Alternative: Assign Family Member</label>
+    <label style={{ display: 'block', marginBottom: '5px', fontWeight: '500' }}>Community Members</label>
     <select 
       value={form.selectedMemberName || ""} 
       onChange={(e) => {
         const selectedName = e.target.value;
         const [familyId, memberName] = selectedName.split('|');
         const family = families.find(f => f.familyId === familyId);
-        setForm({ ...form, selectedMemberName: memberName, selectedHeadName: "", headFamily: family?._id });
+        setForm({ ...form, selectedMemberName: memberName, headFamily: family?._id });
       }}
-      style={{ padding: '10px', marginBottom: '20px', borderRadius: '6px', border: '1px solid #ddd', width: '100%', boxSizing: 'border-box' }}
+      style={{ padding: '10px', marginBottom: '20px', borderRadius: '6px', border: '1px solid #ddd', width: '100%', boxSizing: 'border-box', maxHeight: '200px' }}
     >
-      <option value="">-- Or Select a Family Member --</option>
-      {families.map((f) => 
-        f.members?.filter(m => m.name !== f.head).map((m, idx) => (
-          <option key={`${f.familyId}-${idx}`} value={`${f.familyId}|${m.name}`}>
-            {m.name} from {f.head}'s family ({f.familyId})
+      <option value="">-- Select a Member --</option>
+      {families
+        .flatMap(f => 
+          f.members?.map(m => ({
+            name: m.name,
+            community: m.community,
+            familyId: f.familyId,
+            familyHead: f.head,
+            fullId: `${f.familyId}|${m.name}`
+          })) || []
+        )
+        .filter(m => m.community === communities[editingCommunityIdx]?.name)
+        .filter(m => m.name.toLowerCase().includes((form.memberSearch || "").toLowerCase()))
+        .map((m, idx) => (
+          <option key={idx} value={m.fullId}>
+            {m.name} ({m.familyHead}'s family - {m.familyId})
           </option>
         ))
-      )}
+      }
     </select>
 
     <button 
       className="primary-btn" 
       style={{ width: '100%', padding: '12px', backgroundColor: '#2196f3', color: 'white', border: 'none', borderRadius: '6px', cursor: 'pointer', fontSize: '1rem', fontWeight: 'bold' }}
       onClick={() => {
-        const headName = form.selectedHeadName || form.selectedMemberName;
+        const headName = form.selectedMemberName;
         if (!headName) {
-          showNotify("Please select a head", "error");
+          showNotify("Please select a member from the community", "error");
           return;
         }
         const updatedCommunities = [...communities];
@@ -1759,7 +1824,7 @@ view==="list" ? (
         setForm({});
         showNotify(`${headName} assigned as head of ${communities[editingCommunityIdx].name}`);
       }}
-    >Assign Head</button>
+    >Assign as Head</button>
     <button className="primary-btn" style={{ width: '100%', marginTop: '10px', backgroundColor: '#ddd', color: '#333', border: 'none', borderRadius: '6px', cursor: 'pointer' }} onClick={() => {setView("list"); setEditingCommunityIdx(null); setForm({});}}>Cancel</button>
   </>
 ) : (
