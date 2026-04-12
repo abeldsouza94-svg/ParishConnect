@@ -116,12 +116,16 @@ const AltarHeadDashboard = () => {
     setTimeout(() => setNotification(null), 3000);
   };
 
-  // Filter servers by search term
+  /* =====================
+      SEARCH FILTER
+  ====================== */
   const filteredServers = altarServers.filter(server =>
     server.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
-  // Toggle selection of altar server
+  /* =====================
+      SELECT SERVER
+  ====================== */
   const toggleServer = (name) => {
     if (assignedServers.includes(name)) {
       setAssignedServers(
@@ -132,7 +136,9 @@ const AltarHeadDashboard = () => {
     }
   };
 
-  // Save altar assignment
+  /* =====================
+      ASSIGN ACTION
+  ====================== */
   const handleAltarAssign = async () => {
     if (!altarDate || !altarTime || assignedServers.length < 2) {
       showNotify("Assign at least 2 altar servers with date & time", "error");

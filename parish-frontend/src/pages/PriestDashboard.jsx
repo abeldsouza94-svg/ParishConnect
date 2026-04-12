@@ -2,6 +2,7 @@ import React, { useState, useEffect } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import "./PriestDashboard.css";
 import BackButton from "../components/BackButton";
+import CommunityChat from "./CommunityChat";
 import LoadingOverlay from "../components/LoadingOverlay";
 import { API_BASE_URL } from "../config/api";
 
@@ -18,6 +19,7 @@ const PriestDashboard = () => {
   
   const [records, setRecords] = useState([]);
   const [families, setFamilies] = useState([]);
+  const [communities, setCommunities] = useState([]);
   const [donationOptions, setDonationOptions] = useState([]);
   const [massBookings, setMassBookings] = useState([]);
   const [donations, setDonations] = useState([]);
@@ -27,6 +29,7 @@ const PriestDashboard = () => {
   const [notification, setNotification] = useState(null);
   const [showFilterPopup, setShowFilterPopup] = useState(false);
   const [fetchError, setFetchError] = useState("");
+  const [chatView, setChatView] = useState(null);
   const [announcementTitle, setAnnouncementTitle] = useState("");
   const [announcementMessage, setAnnouncementMessage] = useState("");
   
@@ -45,28 +48,29 @@ const PriestDashboard = () => {
         const responses = await Promise.all([
           fetch(`${API_BASE}/records`),
           fetch(`${API_BASE}/families`),
+          fetch(`${API_BASE}/communities`),
           fetch(`${API_BASE}/donation-options`),
           fetch(`${API_BASE}/mass-bookings`),
           fetch(`${API_BASE}/donations`),
           fetch(`${API_BASE}/gallery`)
         ]);
 
-        const [recordsRes, familiesRes, donationOptionsRes, massBookingsRes, donationsRes, galleryRes] = responses;
-
-        if (recordsRes.ok) setRecords(await recordsRes.json());
-        if (familiesRes.ok) setFamilies(await familiesRes.json());
-        if (donationOptionsRes.ok) {
-          setDonationOptions(await donationOptionsRes.json());
+        if (responses[0].ok) setRecords(await responses[0].json());
+        if (responses[1].ok) setFamilies(await responses[1].json());
+        if (responses[2].ok) setCommunities(await responses[2].json());
+        if (responses[3].ok) {
+          setDonationOptions(await responses[3].json());
         } else {
           setDonationOptions([
             { name: "To the Church", desc: "General maintenance and operations." },
             { name: "To Pilar Church", desc: "Support for sister parish missions." },
-            { name: "Good Samaritan Fund", desc: "Assistance for the needy." }
+            { name: "Good Samaritan Fund", desc: "Assistance for the needy in our community." }
           ]);
         }
-        if (massBookingsRes.ok) setMassBookings(await massBookingsRes.json());
-        if (donationsRes.ok) setDonations(await donationsRes.json());
-        if (galleryRes.ok) setGalleryItems(await galleryRes.json());
+        if (responses[4].ok) setMassBookings(await responses[4].json());
+        if (responses[5].ok) setDonations(await responses[5].json());
+        if (responses[6].ok) setGalleryItems(await responses[6].json());
+        
         setIsLoading(false);
       } catch (_err) {
         console.error("Error loading priest dashboard");
@@ -80,6 +84,7 @@ const PriestDashboard = () => {
   useEffect(() => {
     loadRecords();
     loadFamilies();
+    loadCommunities();
     loadDonationOptions();
     loadMassBookings();
     loadDonations();
@@ -108,8 +113,19 @@ const PriestDashboard = () => {
     }
   };
 
+  const loadCommunities = async () => {
+    try {
+      const response = await fetch(`${API_BASE}/communities`);
+      if (response.ok) {
+        const data = await response.json();
+        setCommunities(data);
+      }
+    } catch (_err) {
+      setCommunities([]);
+    }
+  };
 
-      const loadDonationOptions = async () => {
+  const loadDonationOptions = async () => {
     try {
       const response = await fetch(`${API_BASE}/donation-options`);
       if (response.ok) {
@@ -119,7 +135,7 @@ const PriestDashboard = () => {
         setDonationOptions([
           { name: "To the Church", desc: "General maintenance and operations." },
           { name: "To Pilar Church", desc: "Support for sister parish missions." },
-          { name: "Good Samaritan Fund", desc: "Assistance for the needy." }
+          { name: "Good Samaritan Fund", desc: "Assistance for the needy in our community." }
         ]);
       }
     } catch (_err) {
@@ -359,6 +375,12 @@ const formatPhoneForExport = (phone) => {
     filteredDonations = filteredDonations.filter(d => d.donorName?.toLowerCase().includes(search.toLowerCase()));
   }
 
+  if (chatView) {
+    return (
+      <CommunityChat communityName={chatView} />
+    );
+  }
+
   return (
     <div className="priest-container">
       <LoadingOverlay isLoading={isLoading} message="Loading priest dashboard..." />
@@ -368,11 +390,17 @@ const formatPhoneForExport = (phone) => {
           <h1>Diocese Priest Dashboard</h1>
         </div>
         <div className="header-buttons">
+          <Link to="/community-chats">
+            <button className="chat-btn" style={{ marginRight: '10px', background: '#6c4ab6', color: 'white', border: 'none', padding: '10px 18px', borderRadius: '10px', cursor: 'pointer' }}>
+              Community Chat
+            </button>
+          </Link>
+          
         </div>
       </div>
 
       <div className="priest-tabs">
-        {["Announcements", "Sacrament Records", "Families", "Donation Options", "Mass Bookings", "Donations Received", "Parish Gallery"].map(tab => (
+        {["Announcements", "Sacrament Records", "Families", "Communities", "Donation Options", "Mass Bookings", "Donations Received", "Parish Gallery"].map(tab => (
           <button
             key={tab}
             className={activeTab === tab ? "active-tab" : ""}
@@ -519,6 +547,27 @@ const formatPhoneForExport = (phone) => {
                 ))}
               </tbody>
             </table>
+          </div>
+        )}
+
+        {/* COMMUNITIES */}
+        {activeTab === "Communities" && (
+          <div className="priest-card">
+            <h3>Ministries & Communities</h3>
+            <div className="grid-view">
+              {communities.length > 0 ? communities.map((c, i) => (
+                <div key={i} className="community-item">
+                  <h4>{c.name}</h4>
+                  <p>{c.description}</p>
+                </div>
+              )) : (
+                <div>
+                  <div className="community-item"><h4>Altar Servers</h4><p>Ministry of altar service</p></div>
+                  <div className="community-item"><h4>Lectors Ministry</h4><p>Ministry of readings and proclamations</p></div>
+                  <div className="community-item"><h4>Parish Choir</h4><p>Music and worship ministry</p></div>
+                </div>
+              )}
+            </div>
           </div>
         )}
 
