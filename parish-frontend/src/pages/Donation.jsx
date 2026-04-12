@@ -48,7 +48,7 @@ function Donation() {
     }
 
     const options = {
-      key: "rzp_test_SRSusjYraQKAww",
+      key: import.meta.env.VITE_RAZORPAY_KEY,
       amount: amount * 100,
       currency: "INR",
       name: "ParishConnect",

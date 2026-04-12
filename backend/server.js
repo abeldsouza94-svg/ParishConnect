@@ -37,6 +37,8 @@ const ParishRecordSchema = new mongoose.Schema({
   name: { type: String, required: true },
   familyId: { type: String, default: "" },
   date: { type: String, required: true },
+  godfather: { type: String, default: "" },
+  godmother: { type: String, default: "" },
 }, {
   timestamps: true,
 });
@@ -51,7 +53,10 @@ const FamilySchema = new mongoose.Schema({
   members: [{
     name: String,
     relation: String,
-    community: String
+    community: String,
+    birthDate: { type: String, default: "" },
+    deathDate: { type: String, default: "" },
+    deceased: { type: Boolean, default: false }
   }]
 }, {
   timestamps: true,
@@ -143,6 +148,17 @@ const GalleryItemSchema = new mongoose.Schema({
 }, { timestamps: true });
 
 const GalleryItem = mongoose.model("GalleryItem", GalleryItemSchema);
+
+const CommunitySchema = new mongoose.Schema({
+  name: { type: String, required: true, unique: true },
+  description: { type: String, default: "" },
+  head: { type: String, default: "" }, // Head member name
+  headFamily: { type: String, default: "" }, // Family ID of the head
+  requestStatus: { type: String, enum: ["active", "pending"], default: "active" },
+  requestDate: { type: String, default: "" },
+}, { timestamps: true });
+
+const Community = mongoose.model("Community", CommunitySchema);
 
 // SMS HELPER (Fast2SMS)
 const sendSMS = async (numbers, message) => {
@@ -559,6 +575,59 @@ app.post("/donations", async (req, res) => {
     res.status(201).json(saved);
   } catch (err) {
     res.status(500).json({ error: "Failed to record donation" });
+  }
+});
+
+// COMMUNITY ROUTES
+app.get("/communities", async (req, res) => {
+  try {
+    const communities = await Community.find().sort({ createdAt: 1 });
+    res.json(communities);
+  } catch (err) {
+    res.status(500).json({ error: "Failed to fetch communities" });
+  }
+});
+
+app.post("/communities", async (req, res) => {
+  try {
+    const community = new Community(req.body);
+    const saved = await community.save();
+    res.status(201).json(saved);
+  } catch (err) {
+    res.status(500).json({ error: "Failed to create community" });
+  }
+});
+
+app.put("/communities/:id", async (req, res) => {
+  try {
+    const updated = await Community.findByIdAndUpdate(req.params.id, req.body, { new: true });
+    res.json(updated);
+  } catch (err) {
+    res.status(500).json({ error: "Failed to update community" });
+  }
+});
+
+app.delete("/communities/:id", async (req, res) => {
+  try {
+    await Community.findByIdAndDelete(req.params.id);
+    res.status(204).send();
+  } catch (err) {
+    res.status(500).json({ error: "Failed to delete community" });
+  }
+});
+
+// Update family member as community head
+app.put("/communities/:id/set-head", async (req, res) => {
+  try {
+    const { memberId, memberName, familyId } = req.body;
+    const updated = await Community.findByIdAndUpdate(
+      req.params.id,
+      { head: memberName, headFamily: familyId },
+      { new: true }
+    );
+    res.json(updated);
+  } catch (err) {
+    res.status(500).json({ error: "Failed to set community head" });
   }
 });
 

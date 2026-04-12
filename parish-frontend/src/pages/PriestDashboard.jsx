@@ -26,6 +26,7 @@ const PriestDashboard = () => {
   const [galleryItems, setGalleryItems] = useState([]);
   const [selectedImage, setSelectedImage] = useState(null);
   const [imageCaption, setImageCaption] = useState("");
+  const [expandedFamily, setExpandedFamily] = useState(null);
   const [notification, setNotification] = useState(null);
   const [showFilterPopup, setShowFilterPopup] = useState(false);
   const [fetchError, setFetchError] = useState("");
@@ -514,7 +515,7 @@ const formatPhoneForExport = (phone) => {
           <div className="priest-card">
             <div className="records-header">
               <h3>Parish Families</h3>
-              <p className="sub">View and search family records.</p>
+              <p className="sub">View and search family records. Click on a family to see members.</p>
             </div>
             <div className="search-actions">
               <input
@@ -527,26 +528,50 @@ const formatPhoneForExport = (phone) => {
               <button className="export-btn" onClick={handleExport}>Export</button>
             </div>
 
-            <table className="priest-table">
-              <thead>
-                <tr>
-                  <th>Family ID</th>
-                  <th>Head</th>
-                  <th>Phone</th>
-                  <th>Members Count</th>
-                </tr>
-              </thead>
-              <tbody>
-                {filteredFamilies.map(f => (
-                  <tr key={f._id}>
-                    <td>{f.familyId}</td>
-                    <td>{f.head || "—"}</td>
-                    <td>{f.phone}</td>
-                    <td>{f.members?.length || 0}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+            <div style={{ border: '1px solid #eee', borderRadius: '10px', overflow: 'hidden' }}>
+              {filteredFamilies.map(f => (
+                <div key={f._id} style={{ borderBottom: '1px solid #eee' }}>
+                  <div 
+                    onClick={() => setExpandedFamily(expandedFamily === f._id ? null : f._id)}
+                    style={{ 
+                      padding: '16px', 
+                      backgroundColor: '#f9f9f9', 
+                      cursor: 'pointer', 
+                      display: 'flex', 
+                      justifyContent: 'space-between',
+                      alignItems: 'center',
+                      transition: 'background-color 0.2s'
+                    }}
+                    onMouseOver={(e) => e.current && (e.currentTarget.style.backgroundColor = '#f0f0f0')}
+                    onMouseOut={(e) => e.currentTarget.style.backgroundColor = '#f9f9f9'}
+                  >
+                    <div style={{ flex: 1 }}>
+                      <h4 style={{ margin: '0 0 4px 0', color: '#2d3281' }}>
+                        {expandedFamily === f._id ? '▼' : '▶'} {f.familyId}
+                      </h4>
+                      <p style={{ margin: '0px', color: '#666', fontSize: '0.9rem' }}>Head: {f.head || "—"} | Members: {f.members?.length || 0}</p>
+                    </div>
+                    <p style={{ margin: '0px', color: '#666', fontSize: '0.9rem' }}>{f.phone}</p>
+                  </div>
+                  
+                  {expandedFamily === f._id && (
+                    <div style={{ padding: '16px', backgroundColor: 'white' }}>
+                      <h5 style={{ marginTop: '0', marginBottom: '12px', color: '#2d3281' }}>Family Members</h5>
+                      <ul style={{ margin: '0', paddingLeft: '20px' }}>
+                        {f.members?.map((m, idx) => (
+                          <li key={idx} style={{ marginBottom: '8px', opacity: m.deceased ? 0.6 : 1, textDecoration: m.deceased ? 'line-through' : 'none' }}>
+                            <strong>{m.name}</strong> ({m.relation})
+                            {m.community && <span> • {m.community}</span>}
+                            {m.birthDate && <span> [b: {m.birthDate}]</span>}
+                            {m.deathDate && <span> [d: {m.deathDate}]</span>}
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
           </div>
         )}
 
@@ -555,17 +580,60 @@ const formatPhoneForExport = (phone) => {
           <div className="priest-card">
             <h3>Ministries & Communities</h3>
             <div className="grid-view">
-              {communities.length > 0 ? communities.map((c, i) => (
-                <div key={i} className="community-item">
-                  <h4>{c.name}</h4>
-                  <p>{c.description}</p>
+              {communities && communities.length > 0 ? communities.map((c, i) => (
+                <div key={i} className="community-item" style={{ padding: '16px', border: '1px solid #eee', borderRadius: '10px', backgroundColor: '#f9f9f9' }}>
+                  <h4 style={{ margin: '0 0 8px 0', color: '#2d3281' }}>{c.name}</h4>
+                  <p style={{ margin: '0 0 10px 0', color: '#666', fontSize: '0.9rem' }}>{c.desc || c.description || "Community ministry"}</p>
+                  <div style={{ paddingTop: '10px', borderTop: '1px solid #ddd' }}>
+                    <p style={{ margin: '8px 0', fontSize: '0.85rem', color: '#555' }}>
+                      <strong>Head:</strong> {c.head || "Not assigned"}
+                    </p>
+                    <div style={{ display: 'flex', gap: '8px', marginTop: '10px' }}>
+                      <button 
+                        onClick={() => setChatView(c.name)}
+                        style={{ flex: 1, padding: '8px 12px', backgroundColor: '#6c4ab6', color: 'white', border: 'none', borderRadius: '6px', fontSize: '0.85rem', cursor: 'pointer' }}
+                      >
+                        Chat
+                      </button>
+                    </div>
+                  </div>
                 </div>
               )) : (
-                <div>
-                  <div className="community-item"><h4>Altar Servers</h4><p>Ministry of altar service</p></div>
-                  <div className="community-item"><h4>Lectors Ministry</h4><p>Ministry of readings and proclamations</p></div>
-                  <div className="community-item"><h4>Parish Choir</h4><p>Music and worship ministry</p></div>
-                </div>
+                <>
+                  <div className="community-item" style={{ padding: '16px', border: '1px solid #eee', borderRadius: '10px', backgroundColor: '#f9f9f9' }}>
+                    <h4 style={{ margin: '0 0 8px 0', color: '#2d3281' }}>Altar Servers</h4>
+                    <p style={{ margin: '0 0 10px 0', color: '#666', fontSize: '0.9rem' }}>Ministry of altar service</p>
+                    <div style={{ paddingTop: '10px', borderTop: '1px solid #ddd' }}>
+                      <p style={{ margin: '8px 0', fontSize: '0.85rem', color: '#555' }}>
+                        <strong>Head:</strong> To be assigned
+                      </p>
+                      <div style={{ display: 'flex', gap: '8px', marginTop: '10px' }}>
+                        <button 
+                          onClick={() => setChatView("Altar")}
+                          style={{ flex: 1, padding: '8px 12px', backgroundColor: '#6c4ab6', color: 'white', border: 'none', borderRadius: '6px', fontSize: '0.85rem', cursor: 'pointer' }}
+                        >
+                          Chat
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                  <div className="community-item" style={{ padding: '16px', border: '1px solid #eee', borderRadius: '10px', backgroundColor: '#f9f9f9' }}>
+                    <h4 style={{ margin: '0 0 8px 0', color: '#2d3281' }}>Lectors Ministry</h4>
+                    <p style={{ margin: '0 0 10px 0', color: '#666', fontSize: '0.9rem' }}>Ministry of readings and proclamations</p>
+                    <div style={{ paddingTop: '10px', borderTop: '1px solid #ddd' }}>
+                      <p style={{ margin: '8px 0', fontSize: '0.85rem', color: '#555' }}>
+                        <strong>Head:</strong> To be assigned
+                      </p>
+                      <div style={{ display: 'flex', gap: '8px', marginTop: '10px' }}>
+                        <button  onClick={() => setChatView("Lector")}
+                          style={{ flex: 1, padding: '8px 12px', backgroundColor: '#6c4ab6', color: 'white', border: 'none', borderRadius: '6px', fontSize: '0.85rem', cursor: 'pointer' }}
+                        >
+                          Chat
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                </>
               )}
             </div>
           </div>

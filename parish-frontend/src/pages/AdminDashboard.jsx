@@ -50,7 +50,7 @@ const [massTimings, setMassTimings] = useState([]);
 const [fetchError,setFetchError] = useState("");
 
 const [form,setForm] = useState({});
-const [memberForm,setMemberForm] = useState({ name: "", relation: "", rent: "", community: "" });
+const [memberForm,setMemberForm] = useState({ name: "", relation: "", community: "", birthDate: "", deathDate: "", deceased: false });
 const [memberList,setMemberList] = useState([]);
 const [editingFamily, setEditingFamily] = useState(null);
 const [editingDonationIdx, setEditingDonationIdx] = useState(null);
@@ -331,12 +331,18 @@ const [communities,setCommunities] = useState([
 {
 name:"Altar Servers",
 desc:"Assisting priests during liturgical services.",
-head:"HEAD_ALTAR"
+head:"John Smith",
+headFamily:"FAM01",
+requestStatus:"active",
+requestDate:""
 },
 {
 name:"Lectors Ministry",
 desc:"Assigning Readings to Parish members.",
-head:"HEAD_LECTORS"
+head:"Mary Johnson",
+headFamily:"FAM02",
+requestStatus:"active",
+requestDate:""
 }
 ]);
 
@@ -364,7 +370,7 @@ const addFamilyMember = () => {
   }
 
   setMemberList([...memberList, memberForm]);
-  setMemberForm({ name: "", relation: "", community: "" });
+  setMemberForm({ name: "", relation: "", community: "", birthDate: "", deathDate: "", deceased: false });
   setMemberErrors({});
 };
 
@@ -1414,6 +1420,16 @@ view==="list"?(
   <option value="Holy Orders" disabled={getAssignedSacraments().includes("Holy Orders")}>Holy Orders {getAssignedSacraments().includes("Holy Orders") ? "(Already Assigned)" : ""}</option>
 </select>
 
+{form.type === "Baptism" && (
+  <>
+    <label style={{ display: 'block', marginBottom: '5px', fontWeight: '500' }}>Godfather Name</label>
+    <input type="text" name="godfather" placeholder="Enter godfather's name" style={{ padding: '10px', marginBottom: '15px', borderRadius: '6px', border: '1px solid #ddd', width: '100%', boxSizing: 'border-box' }} value={form.godfather || ""} onChange={handleInputChange}/>
+
+    <label style={{ display: 'block', marginBottom: '5px', fontWeight: '500' }}>Godmother Name</label>
+    <input type="text" name="godmother" placeholder="Enter godmother's name" style={{ padding: '10px', marginBottom: '15px', borderRadius: '6px', border: '1px solid #ddd', width: '100%', boxSizing: 'border-box' }} value={form.godmother || ""} onChange={handleInputChange}/>
+  </>
+)}
+
 <button className="primary-btn" style={{ width: '100%', padding: '12px', backgroundColor: '#6c4ab6', color: 'white', border: 'none', borderRadius: '6px', cursor: 'pointer', fontSize: '1rem', fontWeight: 'bold' }} onClick={handleSaveRecord}>{form._id ? "Save Changes" : "Save Record"}</button>
 {form._id && <button className="primary-btn" style={{ width: '100%', marginTop: '10px', backgroundColor: '#ddd', color: '#333', border: 'none', borderRadius: '6px', cursor: 'pointer', fontSize: '1rem', fontWeight: 'bold' }} onClick={() => { setView("list"); setForm({}); setNameSuggestions([]); }}>Cancel</button>}
 
@@ -1454,8 +1470,8 @@ view==="list"?(
 <td>
   <div style={{ maxHeight: '55px', overflowY: 'auto', paddingRight: '5px', scrollbarWidth: 'thin', border: '1px solid #f0f0f0', borderRadius: '4px', padding: '4px' }}>
     {f.members?.map((m, idx) => (
-      <div key={idx} className="member-summary" style={{ fontSize: '0.85rem', marginBottom: '2px', whiteSpace: 'nowrap' }}>
-        {m.name} ({m.relation}){m.community ? ` • ${m.community}` : ""}
+      <div key={idx} className="member-summary" style={{ fontSize: '0.85rem', marginBottom: '2px', whiteSpace: 'nowrap', opacity: m.deceased ? 0.5 : 1, textDecoration: m.deceased ? 'line-through' : 'none', transition: 'opacity 0.2s ease' }}>
+        {m.name} ({m.relation}){m.community ? ` • ${m.community}` : ""}{m.deathDate ? ` [d: ${m.deathDate}]` : ""}
       </div>
     ))}
   </div>
@@ -1569,16 +1585,40 @@ view==="list"?(
         <option value="None">None</option>
       </select>
     </div>
-    <button type="button" className="add-btn" style={{ padding: '10px 20px', backgroundColor: '#2196f3', color: 'white', border: 'none', borderRadius: '6px', cursor: 'pointer', marginTop: 'auto' }} onClick={addFamilyMember}>Add Member</button>
   </div>
+
+  <div style={{ marginBottom: '15px', display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
+    <div style={{ flex: '1', minWidth: '150px' }}>
+      <label style={{ display: 'block', marginBottom: '5px', fontWeight: '500', fontSize: '0.9rem' }}>Birth Date</label>
+      <input type="date" name="birthDate" style={{ width: '100%', padding: '10px', borderRadius: '6px', border: '1px solid #ddd' }} value={memberForm.birthDate || ""} onChange={handleMemberInputChange}/>
+    </div>
+    <div style={{ flex: '1', minWidth: '150px' }}>
+      <label style={{ display: 'block', marginBottom: '5px', fontWeight: '500', fontSize: '0.9rem' }}>Death Date</label>
+      <input type="date" name="deathDate" style={{ width: '100%', padding: '10px', borderRadius: '6px', border: '1px solid #ddd' }} value={memberForm.deathDate || ""} onChange={handleMemberInputChange}/>
+    </div>
+    <div style={{ flex: '0.5', minWidth: '100px', display: 'flex', alignItems: 'flex-end' }}>
+      <label style={{ display: 'flex', alignItems: 'center', gap: '8px', fontWeight: '500', fontSize: '0.9rem', padding: '10px', backgroundColor: '#f5f5f5', borderRadius: '6px', cursor: 'pointer', width: '100%' }}>
+        <input 
+          type="checkbox" 
+          name="deceased" 
+          style={{ cursor: 'pointer', width: '16px', height: '16px' }}
+          checked={memberForm.deceased || false}
+          onChange={(e) => setMemberForm({...memberForm, deceased: e.target.checked})}
+        />
+        Deceased
+      </label>
+    </div>
+  </div>
+
+  <button type="button" className="add-btn" style={{ width: '100%', padding: '10px 20px', backgroundColor: '#2196f3', color: 'white', border: 'none', borderRadius: '6px', cursor: 'pointer' }} onClick={addFamilyMember}>Add Member</button>
 
   {memberList.length > 0 && (
     <div className="member-list">
       <h4>Members to add</h4>
       <ul>
         {memberList.map((m, index) => (
-          <li key={index} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingRight: '10px' }}>
-            <span>{m.name} ({m.relation}) {m.community ? `• ${m.community}` : ""}</span>
+          <li key={index} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingRight: '10px', opacity: m.deceased ? 0.6 : 1, textDecoration: m.deceased ? 'line-through' : 'none' }}>
+            <span>{m.name} ({m.relation}) {m.community ? `• ${m.community}` : ""} {m.birthDate && `(b: ${m.birthDate})`} {m.deathDate && `(d: ${m.deathDate})`}</span>
             <div style={{ display: 'flex', gap: '8px' }}>
               <button type="button" className="edit" onClick={() => editFamilyMember(index)} style={{ padding: '4px 8px', backgroundColor: '#6c4ab6', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer', fontSize: '0.8rem' }}>Edit</button>
               <button type="button" className="delete" onClick={() => removeFamilyMember(index)} style={{ padding: '4px 8px', backgroundColor: '#f44336', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer', fontSize: '0.8rem' }}>Remove</button>
@@ -1611,6 +1651,7 @@ view==="list" ? (
 <th>Name</th>
 <th>Description</th>
 <th>Head</th>
+<th>Status</th>
 <th>Actions</th>
 </tr>
 </thead>
@@ -1621,11 +1662,19 @@ view==="list" ? (
 <tr key={i}>
 <td>{c.name}</td>
 <td>{c.desc}</td>
-<td>{c.head}</td>
+<td>{c.head || "Not Assigned"}</td>
+<td style={{ fontWeight: '600', color: c.requestStatus === 'pending' ? '#ff9800' : '#4caf50' }}>
+  {c.requestStatus === 'pending' ? '⚡ Pending' : '✓ Active'}
+  {c.requestDate && <div style={{ fontSize: '0.75rem', fontWeight: 'normal' }}>({c.requestDate})</div>}
+</td>
 <td>
   <button 
+    className="action-btn" 
+    style={{ padding: '6px 12px', backgroundColor: '#2196f3', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer', marginRight: '8px', fontSize: '0.85rem' }}
+    onClick={() => { setEditingCommunityIdx(i); setForm({...c, assignHeadMode: true}); setView("add"); }}>Assign Head</button>
+  <button 
     className="action-btn edit-btn" 
-    style={{ padding: '6px 12px', backgroundColor: '#6c4ab6', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer', marginRight: '10px' }}
+    style={{ padding: '6px 12px', backgroundColor: '#6c4ab6', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer', marginRight: '8px' }}
     onClick={() => handleRequestInitiate("Edit", c)}>Request Edit</button>
   <button 
     className="action-btn delete-btn" 
@@ -1644,19 +1693,88 @@ view==="list" ? (
 
 <div className="comunity-card">
 
-<div className="back-link" onClick={()=>setView("list")}> X </div>
+<div className="back-link" onClick={()=>{setView("list"); setEditingCommunityIdx(null)}}> X </div>
 
-<h2>{editingCommunityIdx !== null ? "Edit Community" : "Request New Community"}</h2>
+<h2>{form.assignHeadMode ? `Assign Head to ${communities[editingCommunityIdx]?.name}` : editingCommunityIdx !== null ? "Edit Community" : "Request New Community"}</h2>
 
-<label style={{ display: 'block', marginBottom: '5px', fontWeight: '500' }}>Community Name</label>
-<input name="name" placeholder="e.g., Youth Choir" value={form.name || ""} style={{ padding: '10px', marginBottom: '15px', borderRadius: '6px', border: errors.name ? '2px solid red' : '1px solid #ddd', width: '100%', boxSizing: 'border-box' }} onChange={handleInputChange}/>
-<label style={{ display: 'block', marginBottom: '5px', fontWeight: '500' }}>Assign Head ID</label>
-<input name="head" placeholder="e.g., FAM01" value={form.head || ""} style={{ padding: '10px', marginBottom: '15px', borderRadius: '6px', border: errors.head ? '2px solid red' : '1px solid #ddd', width: '100%', boxSizing: 'border-box' }} onChange={handleInputChange}/>
-<label style={{ display: 'block', marginBottom: '5px', fontWeight: '500' }}>Description</label>
-<textarea name="desc" rows="3" placeholder="Briefly describe the community..." value={form.desc || ""} style={{ padding: '10px', marginBottom: '20px', borderRadius: '6px', border: errors.desc ? '2px solid red' : '1px solid #ddd', width: '100%', boxSizing: 'border-box', fontFamily: 'inherit' }} onChange={handleInputChange}/>
+{form.assignHeadMode ? (
+  <>
+    <label style={{ display: 'block', marginBottom: '5px', fontWeight: '500' }}>Select Family Head</label>
+    <select 
+      value={form.selectedHeadName || ""} 
+      onChange={(e) => {
+        const selectedName = e.target.value;
+        const family = families.find(f => f.head === selectedName);
+        setForm({ ...form, selectedHeadName, headFamily: family?._id });
+      }}
+      style={{ padding: '10px', marginBottom: '20px', borderRadius: '6px', border: '1px solid #ddd', width: '100%', boxSizing: 'border-box' }}
+    >
+      <option value="">-- Select a Family Head --</option>
+      {families.map((f, idx) => (
+        <option key={idx} value={f.head}>{f.head} ({f.familyId})</option>
+      ))}
+    </select>
 
-<button className="primary-btn" style={{ width: '100%', padding: '12px', backgroundColor: '#6c4ab6', color: 'white', border: 'none', borderRadius: '6px', cursor: 'pointer', fontSize: '1rem', fontWeight: 'bold' }} onClick={handleSaveCommunity}>{editingCommunityIdx !== null ? "Save Changes" : "Send Request to Developer"}</button>
-{editingCommunityIdx !== null && <button className="primary-btn" style={{ width: '100%', marginTop: '10px', backgroundColor: '#ddd', color: '#333' }} onClick={() => {setView("list"); setEditingCommunityIdx(null); setForm({});}}>Cancel</button>}
+    <label style={{ display: 'block', marginBottom: '5px', fontWeight: '500' }}>Alternative: Assign Family Member</label>
+    <select 
+      value={form.selectedMemberName || ""} 
+      onChange={(e) => {
+        const selectedName = e.target.value;
+        const [familyId, memberName] = selectedName.split('|');
+        const family = families.find(f => f.familyId === familyId);
+        setForm({ ...form, selectedMemberName: memberName, selectedHeadName: "", headFamily: family?._id });
+      }}
+      style={{ padding: '10px', marginBottom: '20px', borderRadius: '6px', border: '1px solid #ddd', width: '100%', boxSizing: 'border-box' }}
+    >
+      <option value="">-- Or Select a Family Member --</option>
+      {families.map((f) => 
+        f.members?.filter(m => m.name !== f.head).map((m, idx) => (
+          <option key={`${f.familyId}-${idx}`} value={`${f.familyId}|${m.name}`}>
+            {m.name} from {f.head}'s family ({f.familyId})
+          </option>
+        ))
+      )}
+    </select>
+
+    <button 
+      className="primary-btn" 
+      style={{ width: '100%', padding: '12px', backgroundColor: '#2196f3', color: 'white', border: 'none', borderRadius: '6px', cursor: 'pointer', fontSize: '1rem', fontWeight: 'bold' }}
+      onClick={() => {
+        const headName = form.selectedHeadName || form.selectedMemberName;
+        if (!headName) {
+          showNotify("Please select a head", "error");
+          return;
+        }
+        const updatedCommunities = [...communities];
+        updatedCommunities[editingCommunityIdx] = {
+          ...updatedCommunities[editingCommunityIdx],
+          head: headName,
+          headFamily: form.headFamily,
+          requestStatus: "active",
+          requestDate: new Date().toISOString().slice(0, 10)
+        };
+        setCommunities(updatedCommunities);
+        setView("list");
+        setEditingCommunityIdx(null);
+        setForm({});
+        showNotify(`${headName} assigned as head of ${communities[editingCommunityIdx].name}`);
+      }}
+    >Assign Head</button>
+    <button className="primary-btn" style={{ width: '100%', marginTop: '10px', backgroundColor: '#ddd', color: '#333', border: 'none', borderRadius: '6px', cursor: 'pointer' }} onClick={() => {setView("list"); setEditingCommunityIdx(null); setForm({});}}>Cancel</button>
+  </>
+) : (
+  <>
+    <label style={{ display: 'block', marginBottom: '5px', fontWeight: '500' }}>Community Name</label>
+    <input name="name" placeholder="e.g., Youth Choir" value={form.name || ""} style={{ padding: '10px', marginBottom: '15px', borderRadius: '6px', border: errors.name ? '2px solid red' : '1px solid #ddd', width: '100%', boxSizing: 'border-box' }} onChange={handleInputChange}/>
+    <label style={{ display: 'block', marginBottom: '5px', fontWeight: '500' }}>Assign Head ID</label>
+    <input name="head" placeholder="e.g., FAM01" value={form.head || ""} style={{ padding: '10px', marginBottom: '15px', borderRadius: '6px', border: errors.head ? '2px solid red' : '1px solid #ddd', width: '100%', boxSizing: 'border-box' }} onChange={handleInputChange}/>
+    <label style={{ display: 'block', marginBottom: '5px', fontWeight: '500' }}>Description</label>
+    <textarea name="desc" rows="3" placeholder="Briefly describe the community..." value={form.desc || ""} style={{ padding: '10px', marginBottom: '20px', borderRadius: '6px', border: errors.desc ? '2px solid red' : '1px solid #ddd', width: '100%', boxSizing: 'border-box', fontFamily: 'inherit' }} onChange={handleInputChange}/>
+
+    <button className="primary-btn" style={{ width: '100%', padding: '12px', backgroundColor: '#6c4ab6', color: 'white', border: 'none', borderRadius: '6px', cursor: 'pointer', fontSize: '1rem', fontWeight: 'bold' }} onClick={handleSaveCommunity}>{editingCommunityIdx !== null ? "Save Changes" : "Send Request to Developer"}</button>
+    {editingCommunityIdx !== null && <button className="primary-btn" style={{ width: '100%', marginTop: '10px', backgroundColor: '#ddd', color: '#333' }} onClick={() => {setView("list"); setEditingCommunityIdx(null); setForm({});}}>Cancel</button>}
+  </>
+)}
 
 </div>
 
