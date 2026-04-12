@@ -1,480 +1,645 @@
-const net = require('net');
-const http = require('http');
-const ws = require('ws');
-const fs = require('fs');
-const path = require('path');
-const yaml = require('js-yaml');
-const crypto = require('crypto');
-const log = require('../common/logger.js');
+// ===== IMPORTS =====
+const express = require("express");
+const mongoose = require("mongoose");
+const cors = require("cors");
+const http = require("http");
+const nodemailer = require("nodemailer");
+const { Server } = require("socket.io");
 
-class TunnelServer {
-  constructor(configPath) {
-    this.config = this.loadConfig(configPath);
-    this.tunnels = new Map();        // remotePort -> clientSocket
-    this.httpTunnels = new Map();     // remoteDomain -> clientSocket
-    this.tunnelServers = new Map();  // remotePort -> net.Server
-    this.connections = new Map();   // connectionId -> { socket, state, buffer }
-    this.httpConnections = new Map(); // connectionId -> { socket, state, buffer }
-    this.connectionIdCounter = 0;
+// ===== APP SETUP =====
+const app = express();
+app.use(cors({
+  origin: ["https://parish-connect-ten.vercel.app", "http://localhost:5173", "http://localhost:3000"],
+  credentials: true
+}));
+// Increase limit for Base64 image uploads
+app.use(express.json({ limit: '10mb' }));
 
-    // Encryption configuration
-    this.cryptoConfig = {
-      algorithm: 'aes-256-gcm',
-      key: crypto.scryptSync(this.config.crypto.password, 'salt', 32),
-      ivLength: 12
-    };
-  }
+const uri="mongodb://church_db:church_db@ac-gv6yjei-shard-00-00.1n2sw2k.mongodb.net:27017,ac-gv6yjei-shard-00-01.1n2sw2k.mongodb.net:27017,ac-gv6yjei-shard-00-02.1n2sw2k.mongodb.net:27017/?ssl=true&replicaSet=atlas-11v5l2-shard-0&authSource=admin&appName=Cluster0";
+// CONNECT MONGODB
+mongoose.connect(uri)
+  .then(() => console.log("MongoDB connected"))
+  .catch(err => console.log(err));
 
-  encrypt(data) {
-    const iv = crypto.randomBytes(this.cryptoConfig.ivLength);
-    const cipher = crypto.createCipheriv(this.cryptoConfig.algorithm, this.cryptoConfig.key, iv);
-    const encrypted = Buffer.concat([cipher.update(data), cipher.final()]);
-    return Buffer.concat([iv, cipher.getAuthTag(), encrypted]);
-  }
+// SCHEMA
+const MessageSchema = new mongoose.Schema({
+  id: Number,
+  community: String,
+  user: Object,
+  text: String,
+  time: Number,
+});
 
-  decrypt(encryptedData) {
-    const iv = encryptedData.subarray(0, this.cryptoConfig.ivLength);
-    const authTag = encryptedData.subarray(this.cryptoConfig.ivLength, this.cryptoConfig.ivLength + 16);
-    const data = encryptedData.subarray(this.cryptoConfig.ivLength + 16);
-    const decipher = crypto.createDecipheriv(this.cryptoConfig.algorithm, this.cryptoConfig.key, iv);
-    decipher.setAuthTag(authTag);
-    return Buffer.concat([decipher.update(data), decipher.final()]);
-  }
+const Message = mongoose.model("Message", MessageSchema);
 
-  loadConfig(configPath) {
-    try {
-      const filePath = path.resolve(process.cwd(), configPath);
-      return yaml.load(fs.readFileSync(filePath, 'utf8'));
-    } catch (e) {
-      throw new Error(`Server config error: ${e.message}`);
-    }
-  }
+const ParishRecordSchema = new mongoose.Schema({
+  type: { type: String, required: true },
+  name: { type: String, required: true },
+  familyId: { type: String, default: "" },
+  date: { type: String, required: true },
+}, {
+  timestamps: true,
+});
 
-  start() {
-    // TCP control server
-    const server = net.createServer(socket => this.handleControlConnection(socket));
-    server.listen(this.config.port, () => {
-      log.info('Server', `Control server listening on ${this.config.port}`);
+const ParishRecord = mongoose.model("ParishRecord", ParishRecordSchema);
+
+const FamilySchema = new mongoose.Schema({
+  familyId: { type: String, required: true, unique: true },
+  head: { type: String, required: true },
+  phone: { type: String, required: true },
+  password: { type: String, default: "familypass" },
+  members: [{
+    name: String,
+    relation: String,
+    community: String
+  }]
+}, {
+  timestamps: true,
+});
+
+const Family = mongoose.model("Family", FamilySchema);
+
+// MIGRATION: Ensure all existing families have a password field
+Family.updateMany(
+  { password: { $exists: false } },
+  { $set: { password: "familypass" } }
+).then(res => {
+  if (res.modifiedCount > 0) console.log(`Migrated ${res.modifiedCount} families with default password.`);
+});
+
+const AnnouncementSchema = new mongoose.Schema({
+  title: { type: String, required: true },
+  message: { type: String, required: true },
+  category: { type: String, default: "General" },
+  date: { type: String, required: true },
+}, { timestamps: true });
+
+const Announcement = mongoose.model("Announcement", AnnouncementSchema);
+
+const MassTimingSchema = new mongoose.Schema({
+  day: { type: String, required: true },
+  time: { type: String, required: true },
+});
+
+const MassTiming = mongoose.model("MassTiming", MassTimingSchema);
+
+const DonationSchema = new mongoose.Schema({
+  amount: Number,
+  target: String,
+  donorName: String,
+  donorPhone: String,
+  donorAddress: String,
+  paymentId: String,
+  orderId: String,
+  date: String,
+  status: { type: String, default: "Pending" }
+}, { timestamps: true });
+
+const Donation = mongoose.model("Donation", DonationSchema);
+
+const MassBookingSchema = new mongoose.Schema({
+  name: String,
+  phone: String,
+  address: String,
+  intentions: String,
+  date: String,
+  time: String,
+  status: { type: String, default: "Pending" },
+  paidAmount: Number,
+  paymentId: String,
+  orderId: String,
+  signature: String,
+}, { timestamps: true });
+
+const MassBooking = mongoose.model("MassBooking", MassBookingSchema);
+
+const UnavailableDateSchema = new mongoose.Schema({
+  date: { type: String, required: true },
+  time: { type: String, default: "All Day" }
+});
+
+const UnavailableDate = mongoose.model("UnavailableDate", UnavailableDateSchema);
+
+const AltarAssignmentSchema = new mongoose.Schema({
+  date: { type: String, required: true },
+  time: { type: String, required: true },
+  servers: [{ type: String }],
+}, { timestamps: true });
+
+const AltarAssignment = mongoose.model("AltarAssignment", AltarAssignmentSchema);
+
+const LectorAssignmentSchema = new mongoose.Schema({
+  date: { type: String, required: true },
+  time: { type: String, required: true },
+  readings: [{ type: Object }], // Stores { type, person, custom }
+}, { timestamps: true });
+
+const LectorAssignment = mongoose.model("LectorAssignment", LectorAssignmentSchema);
+
+const GalleryItemSchema = new mongoose.Schema({
+  image: { type: String, required: true }, // Base64 Data
+  caption: { type: String, default: "" },
+  date: { type: String, required: true },
+}, { timestamps: true });
+
+const GalleryItem = mongoose.model("GalleryItem", GalleryItemSchema);
+
+// SMS HELPER (Fast2SMS)
+const sendSMS = async (numbers, message) => {
+  if (!numbers) return;
+  try {
+    const response = await fetch("https://www.fast2sms.com/dev/bulkV2", {
+      method: "POST",
+      headers: {
+        "authorization": "dkxRBi5VEam49qSFhYM60zsZGANT7cpnotDfjwrg2lLQb1yvHKIWr2lVpUkXMx9qGCn0Qgt53K16PJmY",
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({
+        route: "q",
+        message: message,
+        numbers: numbers
+      })
     });
-
-    // HTTP control server
-    const httpServer = http.createServer((req, res) => { this.handleHttpControlConnection(req, res); });
-    // HTTP control server with websocket shared port server
-    const wsServer = new ws.Server({ server: httpServer });
-    wsServer.on('connection', (ws, request) => { this.handleHttpWsControlConnection(ws, request) });
-
-    httpServer.listen(this.config.httpPort, () => {
-      log.info('Server', `Control HTTP server listening on ${this.config.httpPort}`);
-    });
-  }
-
-  handleHttpWsControlConnection(ws, request) {
-    const host = request.headers['host'].split(':')[0];
-    const tunnelSocket = this.httpTunnels.get(host);
-    if (!tunnelSocket) {
-      ws.send(`Domain not registered`);
-      ws.close();
-      return;
+    const data = await response.json();
+    if (!data.return) {
+      console.error("Fast2SMS Rejection:", data.message);
     }
-
-    const connectionId = this.generateConnectionId();
-    this.httpConnections.set(connectionId, { ws, host });
-    const headerJson = {
-      url: request.url,
-      headers: request.headers,
-      host: host
-    };
-    const headerPacket = Buffer.concat([
-      Buffer.from([0x46]), // HTTP WS data handling
-      this.buildConnectionIdBuffer(connectionId),
-      Buffer.from([0x43]), // C means JSON header data
-      Buffer.from(JSON.stringify(headerJson), 'utf8')
-    ]);
-    this.sendPacket(tunnelSocket, headerPacket);
-
-    ws.on('message', (message) => {
-      const dataPacket = Buffer.concat([
-        Buffer.from([0x46]), // HTTP WS data handling
-        this.buildConnectionIdBuffer(connectionId),
-        Buffer.from([0x44]), // D means data
-        Buffer.from(message.toString('utf8'), 'utf8')
-      ]);
-      this.sendPacket(tunnelSocket, dataPacket);
-    });
-
-    ws.on('close', () => {
-      const endPacket = Buffer.concat([
-        Buffer.from([0x46]), // HTTP WS data handling
-        this.buildConnectionIdBuffer(connectionId),
-        Buffer.from([0x45])  // E means data transfer complete
-      ]);
-      this.sendPacket(tunnelSocket, endPacket);
-    });
-  }
-
-  handleHttpControlConnection(req, res) {
-    const host = req.headers['host'].split(':')[0];
-    const tunnelSocket = this.httpTunnels.get(host);
-
-    if (!tunnelSocket) {
-      res.statusCode = 404; // Status code
-      res.setHeader('Content-Type', 'text/plain'); // Set response header
-      res.end('Domain not registered');
-      return;
-    }
-
-    const connectionId = this.generateConnectionId();
-    this.httpConnections.set(connectionId, { res, host });
-
-    // Protocol format: [command(0x45)][connectionId(4 bytes)][subcommand][JSON header data]
-    const headerJson = {
-      method: req.method,
-      url: req.url,
-      headers: req.headers,
-      connectionId: connectionId,
-      host: host
-    };
-    const headerPacket = Buffer.concat([
-      Buffer.from([0x45]), // HTTP data handling
-      this.buildConnectionIdBuffer(connectionId),
-      Buffer.from([0x43]), // C means JSON header data
-      Buffer.from(JSON.stringify(headerJson), 'utf8')
-    ]);
-    this.sendPacket(tunnelSocket, headerPacket);
-
-    // Handle content body
-    req.on('data', chunk => {
-      const dataPacket = Buffer.concat([
-        Buffer.from([0x45]), // HTTP data handling
-        this.buildConnectionIdBuffer(connectionId),
-        Buffer.from([0x44]), // D means data
-        chunk
-      ]);
-      this.sendPacket(tunnelSocket, dataPacket);
-    })
-
-    req.on('end', () => {
-      const endPacket = Buffer.concat([
-        Buffer.from([0x45]), // HTTP data handling
-        this.buildConnectionIdBuffer(connectionId),
-        Buffer.from([0x45])  // E means data transfer complete
-      ]);
-      this.sendPacket(tunnelSocket, endPacket);
-    })
-
-  }
-
-  handleControlConnection(clientSocket) {
-    let buffer = Buffer.alloc(0);
-    
-    clientSocket.on('data', data => {
-      buffer = Buffer.concat([buffer, data]);
-      while (buffer.length >= 4) {
-        const pkgLen = buffer.readUInt32BE(0);
-        if (buffer.length < 4 + pkgLen) break;
-        
-        const packet = buffer.slice(4, 4 + pkgLen);
-        buffer = buffer.slice(4 + pkgLen);
-        const decryptedPacket = this.decrypt(packet);
-        this.processPacket(clientSocket, decryptedPacket);
-      }
-    });
-
-    clientSocket.on('error', err => {
-      log.error('Server', `Control socket error: ${err.message}`);
-    });
-
-    clientSocket.on('close', () => {
-      log.info('Server', `Tunnel client disconnected `);
-      this.closeClientTunnalsAndServers(clientSocket);
-    });
-  }
-
-  closeClientTunnalsAndServers(clientSocket) {
-    for (const [remotePort, socket] of this.tunnels.entries()) {
-      if (socket === clientSocket) {
-        this.tunnels.delete(remotePort);
-        const server = this.tunnelServers.get(remotePort);
-        if (server) {
-          server.close();
-          if(server._sockets) {
-            server._sockets.forEach((socket) => {
-              socket.destroy(); // Force close connection 
-            });
-            server._sockets.clear();
-          }
-        }
-      }
-    }
-    // Close HTTP tunnel
-    for (const [domain, socket] of this.httpTunnels.entries()) {
-      if (socket === clientSocket) {
-        log.info('Server', `Closed HTTP tunnel for domain ${domain}`);
-        this.httpTunnels.delete(domain);
-      }
-    }
-  }
-
-  processPacket(clientSocket, packet) {
-    const cmd = packet[0]; // Command byte is always first
-    const payload = packet.slice(1);
-
-    switch (cmd) {
-      case 0x52: // 'R' Register tunnel
-        if (payload[0] === 0x48) { // H means HTTP registration
-          this.handleHttpRegister(clientSocket, payload.slice(1));
-        } else {
-          this.handleRegister(clientSocket, payload);
-        }
-        break;
-      case 0x41: // 'A' ACK confirmation
-      case 0x44: // 'D' TCP data transmission
-        this.handleConnectionData(cmd, payload);
-        break;
-      case 0x45: // 'D' HTTP data transmission
-        this.handleHttpConnectionData(cmd, payload);
-        break;
-      case 0x46: // 'E' HTTP WS data transmission
-        this.handleHttpWsConnectionData(cmd, payload);
-        break;
-      case 0x48: // 'H' Heartbeat packet
-        // Reply with the same heartbeat packet after receiving
-        const response = Buffer.alloc(1);
-        response.writeUInt8(0x48, 0);
-        this.sendPacket(clientSocket, response);
-        break;
-    }
-  }
-
-  handleHttpWsConnectionData(cmd, payload){
-    const connectionId = payload.readUInt32BE(0);
-    const subCmd = payload[4]; // Subcommand
-    const data = payload.slice(5); // Data
-    const conn = this.httpConnections.get(connectionId);
-    if (!conn) return;
-    switch (subCmd) {
-      case 0x43: // 'C' means JSON header data
-        break;
-      case 0x44: // 'D' means data
-        // 检查是否是第一次写入数据，如果是则需要解析头信息并设置响应头
-        conn.ws.send(data.toString('utf8'));
-        break;
-      case 0x45: // 'E' means end
-        conn.ws.close();
-        this.httpConnections.delete(connectionId);
-        break;
-    }
-  }
-
-  handleHttpConnectionData(cmd, payload){
-    const connectionId = payload.readUInt32BE(0);
-    const subCmd = payload[4]; // Subcommand
-    const data = payload.slice(5); // Data
-    const conn = this.httpConnections.get(connectionId);
-    if (!conn) return;
-    switch (subCmd) {
-      case 0x43: // 'C' means JSON header data
-        const headersJson = JSON.parse(data.toString('utf8'));
-        conn.res.writeHead(headersJson.statusCode, headersJson.headers);
-        break;
-      case 0x44: // 'D' means data
-        // Check if first write, parse header info and set response headers if needed
-        conn.res.write(data);
-        break;
-      case 0x45: // 'E' means HTTP end
-        conn.res.end();
-        this.httpConnections.delete(connectionId);
-        break;
-    }
-  }
-
-
-  handleRegister(clientSocket, payload) {
-    const remotePort = payload.readUInt16BE(0);
-    if (this.tunnels.has(remotePort)) return;
-    
-    this.tunnels.set(remotePort, clientSocket);
-    log.info('Server', `Registered port ${remotePort}`);
-    this.createPublicServer(remotePort, clientSocket);
-  }
-
-  /**
-   * HTTP domain registration
-   * @param {*} clientSocket 
-   * @param {*} payload 
-   */
-  handleHttpRegister(clientSocket, payload) {
-    const domain = payload.toString('utf8');
-    if (this.httpTunnels.has(domain)) {
-      this.sendNoticePacket(clientSocket, this.buildNoticeHttpJson(false, domain, 'Domain is already occupied'));
-      return;
-    }
-
-    this.httpTunnels.set(domain, clientSocket);
-    this.sendNoticePacket(clientSocket, this.buildNoticeHttpJson(true, domain, 'Domain registration successful'));
-    log.info('Server', `Registered HTTP domain ${domain}`);
-  }
-
-  createPublicServer(remotePort, clientSocket) {
-    if (this.tunnelServers.has(remotePort)) {
-      this.sendNoticePacket(clientSocket, this.buildNoticeTcpJson(false, remotePort, 'Port is already occupied'));
-      return;
-    }
-
-    const server = net.createServer(externalSocket => {
-      if (!server._sockets) server._sockets = new Set();
-      server._sockets.add(externalSocket);
-      const connectionId = this.generateConnectionId();
-      externalSocket.pause();
-
-      // Initialize connection state
-      this.connections.set(connectionId, {
-        socket: externalSocket,
-        state: 'connecting',
-        timer: setTimeout(() => {
-          log.info('Server', `Connection ${connectionId} timeout`);
-          externalSocket.destroy();
-          this.connections.delete(connectionId);
-        }, 5000)
-      });
-
-      // Build CONNECT packet (protocol version 1)
-      const packet = Buffer.alloc(7);
-      packet.writeUInt8(0x43, 0);        // Command byte
-      packet.writeUInt32BE(connectionId, 1); // Connection ID
-      packet.writeUInt16BE(remotePort, 5);    // Port number
-      this.sendPacket(clientSocket, packet);
-
-      // Listen to external connection data (fix point)
-      externalSocket.on('data', data => {
-        const conn = this.connections.get(connectionId);
-        if (!conn) return;
-
-        // Build DATA packet (protocol version 1)
-        const dataPacket = Buffer.alloc(5 + data.length);
-        dataPacket.writeUInt8(0x44, 0);       // Command byte
-        dataPacket.writeUInt32BE(connectionId, 1); // Connection ID
-        data.copy(dataPacket, 5);
-        this.sendPacket(clientSocket, dataPacket);
-      });
-
-      externalSocket.on('close', () => {
-        this.connections.delete(connectionId);
-        server._sockets.delete(externalSocket);
-      });
-
-      externalSocket.on('error', err => {
-        log.error('Server', `External socket error: ${err.message}`);
-        this.connections.delete(connectionId);
-      });
-    });
-
-    server.listen(remotePort, () => {
-      log.info('Server', `Public server listening on ${remotePort}`);
-      this.sendNoticePacket(clientSocket, this.buildNoticeTcpJson(true, remotePort, 'Remote port is open'));
-    });
-    server.on('error', (err) => {
-      log.error('Server', `Failed to start public server on port ${remotePort}: ${err.message}`);
-      this.sendNoticePacket(clientSocket, this.buildNoticeTcpJson(false, remotePort, `${err.message}`));
-      server.close(); // Close the serve
-    });
-    server.on('close', () => {
-      log.info('Server', `Public server closed for port ${remotePort}`);
-      this.sendNoticePacket(clientSocket, this.buildNoticeTcpJson(false, remotePort, 'Remote port is closed'));
-      this.tunnels.delete(remotePort); 
-      this.tunnelServers.delete(remotePort);
-    });
-    this.tunnelServers.set(remotePort, server);
-  }
-
-  handleConnectionData(cmd, payload) {
-    const connectionId = payload.readUInt32BE(0);
-    const conn = this.connections.get(connectionId);
-    if (!conn) return;
-
-    switch (cmd) {
-      case 0x41: // ACK processing
-        if (conn.state === 'connecting') {
-          conn.state = 'ready';
-          conn.socket.resume();
-          clearTimeout(conn.timer);
-        }
-        break;
-      case 0x44: // Data processing
-        const data = payload.slice(4);
-        if (conn.state === 'ready') {
-          conn.socket.write(data);
-        } else {
-          conn.buffer.push(data);
-        }
-        break;
-    }
-  }
-
-  generateConnectionId() {
-    this.connectionIdCounter = (this.connectionIdCounter + 1) % 0xFFFFFFFF;
-    return this.connectionIdCounter;
-  }
-
-  sendPacket(socket, data) {
-    const lengthHeader = Buffer.alloc(4);
-    const encryptedData = this.encrypt(data);
-    lengthHeader.writeUInt32BE(encryptedData.length, 0);
-    socket.write(Buffer.concat([lengthHeader, encryptedData]));
-  }
-
-  /**
-   * Send notification
-   * @param {*} clientSocket 
-   * @param {*} noticeJson 
-   */
-  sendNoticePacket(clientSocket, noticeJson) {
-    const noticeBuffer = Buffer.from(JSON.stringify(noticeJson), 'utf8');
-    const dataPacket = Buffer.alloc(1 + noticeBuffer.length);
-    dataPacket.writeUInt8(0x4E, 0);       // Command byte
-    noticeBuffer.copy(dataPacket, 1);
-    this.sendPacket(clientSocket, dataPacket);
-  }
-
-  /**
-   * Build TCP notification JSON
-   * @param {*} success 
-   * @param {*} remotePort 
-   * @param {*} message 
-   * @returns 
-   */
-  buildNoticeTcpJson(success, remotePort, message) {
-    return {
-      success: success,
-      type: 'tcp',
-      remotePort: remotePort,
-      message: message
-    };
-  }
-
-  /**
-   * Build HTTP notification JSON
-   * @param {*} success 
-   * @param {*} remoteDomain 
-   * @param {*} message 
-   * @returns 
-   */
-  buildNoticeHttpJson(success, remoteDomain, message) {
-    return {
-      success: success,
-      type: 'http',
-      remoteDomain: remoteDomain,
-      message: message
-    };
-  }
-
-  buildConnectionIdBuffer(connectionId) {
-    const buffer = Buffer.alloc(4);
-    buffer.writeUInt32BE(connectionId, 0);
-    return buffer;
-  }
-}
-
-module.exports = {
-  TunnelServer
+    return data;
+  } catch (err) { console.error("Fast2SMS API Error:", err); }
 };
+
+// ROUTES
+app.get("/messages/:community", async (req, res) => {
+  const msgs = await Message.find({
+    community: req.params.community,
+  }).sort({ time: 1 });
+
+  res.json(msgs);
+});
+
+app.delete("/messages/:community", async (req, res) => {
+  try {
+    await Message.deleteMany({ community: req.params.community });
+    res.json({ message: "Chat cleared" });
+  } catch (err) {
+    res.status(500).json({ error: "Failed to clear chat" });
+  }
+});
+
+app.get("/records", async (req, res) => {
+  try {
+    const records = await ParishRecord.find().sort({ date: 1 });
+    res.json(records);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: "Unable to fetch parish records" });
+  }
+});
+
+app.post("/records", async (req, res) => {
+  try {
+    const record = new ParishRecord(req.body);
+    const saved = await record.save();
+    res.status(201).json(saved);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: "Unable to save parish record" });
+  }
+});
+
+app.get("/families", async (req, res) => {
+  try {
+    const families = await Family.find().sort({ createdAt: 1 });
+    res.json(families);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: "Unable to fetch families" });
+  }
+});
+
+app.post("/families", async (req, res) => {
+  try {
+    const family = new Family(req.body);
+    const saved = await family.save();
+    res.status(201).json(saved);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: "Unable to save family" });
+  }
+});
+
+app.post("/families/login", async (req, res) => {
+  const { familyId, password } = req.body;
+  try {
+    const family = await Family.findOne({ familyId, password });
+    if (family) {
+      res.json(family);
+    } else {
+      res.status(401).json({ error: "Invalid Family ID or Password" });
+    }
+  } catch (err) {
+    res.status(500).json({ error: "Server error during login" });
+  }
+});
+
+app.put("/families/:id", async (req, res) => {
+  try {
+    const updated = await Family.findByIdAndUpdate(req.params.id, req.body, { new: true });
+    res.json(updated);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: "Unable to update family" });
+  }
+});
+
+app.delete("/families/:id", async (req, res) => {
+  try {
+    await Family.findByIdAndDelete(req.params.id);
+    res.status(204).send();
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: "Unable to delete family" });
+  }
+});
+
+// QUICK SMS ROUTE
+app.post("/send-sms", async (req, res) => {
+  const { phone, message } = req.body;
+  try {
+    const result = await sendSMS(phone, message);
+    if (result && result.return) {
+      res.json({ success: true, result });
+    } else {
+      res.status(400).json({ error: result?.message || "Fast2SMS failed to accept the request" });
+    }
+  } catch (err) {
+    res.status(500).json({ error: "Failed to send SMS" });
+  }
+});
+
+// ANNOUNCEMENT ROUTES
+app.get("/announcements", async (req, res) => {
+  try {
+    const announcements = await Announcement.find().sort({ createdAt: -1 });
+    res.json(announcements);
+  } catch (err) {
+    res.status(500).json({ error: "Failed to fetch announcements" });
+  }
+});
+
+app.post("/announcements", async (req, res) => {
+  try {
+    const newAnnouncement = new Announcement(req.body);
+    const saved = await newAnnouncement.save();
+
+    // Send SMS in background so it doesn't block the response
+    (async () => {
+      if (req.body.category === "Altar Servers" || req.body.category === "Lectors Ministry") {
+        const commType = req.body.category === "Altar Servers" ? "Altar" : "Lector";
+        const targetFamilies = await Family.find({ "members.community": commType });
+        const phones = [...new Set(targetFamilies.map(f => f.phone))].join(",");
+        if (phones) {
+          await sendSMS(phones, `Parish Notice (${req.body.category}): ${req.body.title}. ${req.body.message}`);
+        }
+      }
+    })();
+
+    res.status(201).json(saved);
+  } catch (err) {
+    res.status(500).json({ error: "Failed to post announcement" });
+  }
+});
+
+app.delete("/announcements/:id", async (req, res) => {
+  try {
+    await Announcement.findByIdAndDelete(req.params.id);
+    res.status(200).json({ message: "Deleted" });
+  } catch (err) {
+    res.status(500).json({ error: "Failed to delete" });
+  }
+});
+
+// MASS TIMING ROUTES
+app.get("/mass-timings", async (req, res) => {
+  try {
+    const timings = await MassTiming.find();
+    res.json(timings);
+  } catch (err) {
+    res.status(500).json({ error: "Failed to fetch timings" });
+  }
+});
+
+app.post("/mass-timings", async (req, res) => {
+  try {
+    const newTiming = new MassTiming(req.body);
+    const saved = await newTiming.save();
+    res.status(201).json(saved);
+  } catch (err) {
+    res.status(500).json({ error: "Failed to save timing" });
+  }
+});
+
+app.delete("/mass-timings/:id", async (req, res) => {
+  try {
+    await MassTiming.findByIdAndDelete(req.params.id);
+    res.status(200).json({ message: "Deleted" });
+  } catch (err) {
+    res.status(500).json({ error: "Failed to delete" });
+  }
+});
+
+// MASS BOOKING ROUTES
+app.get("/mass-bookings", async (req, res) => {
+  try {
+    const bookings = await MassBooking.find().sort({ createdAt: -1 });
+    res.json(bookings);
+  } catch (err) {
+    res.status(500).json({ error: "Failed to fetch bookings" });
+  }
+});
+
+app.post("/mass-bookings", async (req, res) => {
+  try {
+    const booking = new MassBooking(req.body);
+    const saved = await booking.save();
+    res.status(201).json(saved);
+  } catch (err) {
+    res.status(500).json({ error: "Failed to save booking" });
+  }
+});
+
+// UNAVAILABLE DATES ROUTES
+app.get("/unavailable-dates", async (req, res) => {
+  try {
+    const dates = await UnavailableDate.find();
+    res.json(dates);
+  } catch (err) {
+    res.status(500).json({ error: "Failed to fetch blocked dates" });
+  }
+});
+
+app.post("/unavailable-dates", async (req, res) => {
+  try {
+    const newDate = new UnavailableDate(req.body);
+    await newDate.save();
+    res.status(201).json(newDate);
+  } catch (err) {
+    res.status(500).json({ error: "Failed to block date" });
+  }
+});
+
+app.delete("/unavailable-dates/:id", async (req, res) => {
+  try {
+    await UnavailableDate.findByIdAndDelete(req.params.id);
+    res.json({ message: "Date unblocked" });
+  } catch (err) {
+    res.status(500).json({ error: "Failed to unblock date" });
+  }
+});
+
+// ALTAR ASSIGNMENT ROUTES
+app.get("/altar-assignments", async (req, res) => {
+  try {
+    const assignments = await AltarAssignment.find().sort({ date: 1 });
+    res.json(assignments);
+  } catch (err) {
+    res.status(500).json({ error: "Failed to fetch assignments" });
+  }
+});
+
+app.post("/altar-assignments", async (req, res) => {
+  try {
+    const newAssignment = new AltarAssignment(req.body);
+    const saved = await newAssignment.save();
+
+    // Background SMS
+    (async () => {
+      const families = await Family.find({ "members.name": { $in: req.body.servers } });
+      const phones = [...new Set(families.map(f => f.phone))].join(",");
+      if (phones) {
+        await sendSMS(phones, `Assignment Alert: You have been assigned for Altar Server duty on ${req.body.date} at ${req.body.time}.`);
+      }
+    })();
+
+    res.status(201).json(saved);
+  } catch (err) {
+    res.status(500).json({ error: "Failed to save assignment" });
+  }
+});
+
+app.put("/altar-assignments/:id", async (req, res) => {
+  try {
+    const updated = await AltarAssignment.findByIdAndUpdate(req.params.id, req.body, { new: true });
+    
+    (async () => {
+      const families = await Family.find({ "members.name": { $in: req.body.servers } });
+      const phones = [...new Set(families.map(f => f.phone))].join(",");
+      if (phones) {
+        await sendSMS(phones, `Assignment Updated: Your Altar Server duty has been updated to ${req.body.date} at ${req.body.time}.`);
+      }
+    })();
+
+    res.json(updated);
+  } catch (err) {
+    res.status(500).json({ error: "Failed to update assignment" });
+  }
+});
+
+app.delete("/altar-assignments/:id", async (req, res) => {
+  try {
+    await AltarAssignment.findByIdAndDelete(req.params.id);
+    res.status(200).json({ message: "Deleted" });
+  } catch (err) {
+    res.status(500).json({ error: "Failed to delete assignment" });
+  }
+});
+
+// LECTOR ASSIGNMENT ROUTES
+app.get("/lector-assignments", async (req, res) => {
+  try {
+    const assignments = await LectorAssignment.find().sort({ date: 1 });
+    res.json(assignments);
+  } catch (err) {
+    res.status(500).json({ error: "Failed to fetch lector assignments" });
+  }
+});
+
+app.post("/lector-assignments", async (req, res) => {
+  try {
+    const newAssignment = new LectorAssignment(req.body);
+    const saved = await newAssignment.save();
+
+    // Background SMS
+    (async () => {
+      const lectorNames = req.body.readings.map(r => r.person).filter(p => p);
+      const families = await Family.find({ "members.name": { $in: lectorNames } });
+      const phones = [...new Set(families.map(f => f.phone))].join(",");
+      if (phones) {
+        await sendSMS(phones, `Lector Alert: You have been assigned for Mass Readings on ${req.body.date} at ${req.body.time}. Please check your portal.`);
+      }
+    })();
+
+    res.status(201).json(saved);
+  } catch (err) {
+    res.status(500).json({ error: "Failed to save lector assignment" });
+  }
+});
+
+app.put("/lector-assignments/:id", async (req, res) => {
+  try {
+    const updated = await LectorAssignment.findByIdAndUpdate(req.params.id, req.body, { new: true });
+
+    (async () => {
+      const lectorNames = req.body.readings.map(r => r.person).filter(p => p);
+      const families = await Family.find({ "members.name": { $in: lectorNames } });
+      const phones = [...new Set(families.map(f => f.phone))].join(",");
+      if (phones) {
+        await sendSMS(phones, `Lector Update: Your reading assignment for ${req.body.date} has been updated. Please check the portal.`);
+      }
+    })();
+
+    res.json(updated);
+  } catch (err) {
+    res.status(500).json({ error: "Failed to update lector assignment" });
+  }
+});
+
+app.delete("/lector-assignments/:id", async (req, res) => {
+  try {
+    await LectorAssignment.findByIdAndDelete(req.params.id);
+    res.status(200).json({ message: "Deleted" });
+  } catch (err) {
+    res.status(500).json({ error: "Failed to delete lector assignment" });
+  }
+});
+
+// GALLERY ROUTES
+app.get("/gallery", async (req, res) => {
+  try {
+    const items = await GalleryItem.find().sort({ createdAt: -1 });
+    res.json(items);
+  } catch (err) {
+    res.status(500).json({ error: "Failed to fetch gallery" });
+  }
+});
+
+app.post("/gallery", async (req, res) => {
+  try {
+    const newItem = new GalleryItem(req.body);
+    const saved = await newItem.save();
+    res.status(201).json(saved);
+  } catch (err) {
+    res.status(500).json({ error: "Failed to upload photo" });
+  }
+});
+
+app.delete("/gallery/:id", async (req, res) => {
+  try {
+    await GalleryItem.findByIdAndDelete(req.params.id);
+    res.json({ message: "Photo deleted" });
+  } catch (err) {
+    res.status(500).json({ error: "Failed to delete photo" });
+  }
+});
+
+// DONATION ROUTES
+app.get("/donations", async (req, res) => {
+  try {
+    const donations = await Donation.find().sort({ createdAt: -1 });
+    res.json(donations);
+  } catch (err) {
+    res.status(500).json({ error: "Failed to fetch donations" });
+  }
+});
+
+app.post("/donations", async (req, res) => {
+  try {
+    const donation = new Donation(req.body);
+    const saved = await donation.save();
+    res.status(201).json(saved);
+  } catch (err) {
+    res.status(500).json({ error: "Failed to record donation" });
+  }
+});
+
+// RAZORPAY WEBHOOK
+app.post("/razorpay-webhook", async (req, res) => {
+  const event = req.body.event;
+  const payment = req.body.payload.payment.entity;
+
+  // In a real app, you should verify the X-Razorpay-Signature header here
+  if (event === "payment.captured") {
+    await Donation.findOneAndUpdate({ paymentId: payment.id }, { status: "Completed" });
+  } else if (event === "payment.failed") {
+    await Donation.findOneAndUpdate({ paymentId: payment.id }, { status: "Failed" });
+  }
+
+  res.json({ status: "ok" });
+});
+
+// CONFIGURE EMAIL TRANSPORTER
+// IMPORTANT: Use an "App Password" from Google, NOT your regular Gmail password.
+const transporter = nodemailer.createTransport({
+  service: "gmail",
+  auth: {
+    user: "dummyproject.1968s@gmail.com",
+    pass: "jpyghbzfemjchmme" 
+  }
+});
+
+// EMAIL REQUEST ROUTE
+app.post("/send-request", async (req, res) => {
+  try {
+    const { subject, body } = req.body;
+
+    const mailOptions = {
+      from: "dummyproject.1968s@gmail.com",
+      to: "abeldsouza12@gmail.com",
+      subject: subject,
+      text: body
+    };
+
+    await transporter.sendMail(mailOptions);
+    
+    console.log(`Real Email sent to abeldsouza12@gmail.com`);
+    res.status(200).json({ message: "Request received by the server." });
+  } catch (err) {
+    console.error("Mail Error:", err);
+    res.status(500).json({ error: "Failed to process request." });
+  }
+});
+
+// ===== SOCKET.IO SETUP =====
+const server = http.createServer(app);
+
+const io = new Server(server, {
+  cors: {
+    origin: ["https://parish-connect-ten.vercel.app", "http://localhost:5173", "http://localhost:3000"],
+    credentials: true
+  },
+});
+
+// ===== SOCKET EVENTS =====
+io.on("connection", (socket) => {
+  console.log("User connected");
+
+  socket.on("sendMessage", async (data) => {
+    try {
+      const msg = new Message(data);
+      await msg.save();
+
+      io.emit("receiveMessage", data);
+    } catch (err) {
+      console.log("Error:", err);
+    }
+  });
+
+  socket.on("disconnect", () => {
+    console.log("User disconnected");
+  });
+});
+
+// ===== START SERVER =====
+server.listen(5000, () => {
+  console.log("Server running on port 5000");
+});
