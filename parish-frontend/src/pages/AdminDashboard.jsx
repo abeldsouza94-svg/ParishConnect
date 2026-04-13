@@ -1762,27 +1762,17 @@ view==="list" ? (
   <>
     <p style={{ marginBottom: '15px', color: '#666', fontSize: '0.9rem' }}>Select from members of <strong>{communities[editingCommunityIdx]?.name}</strong> community</p>
     
-    <label style={{ display: 'block', marginBottom: '5px', fontWeight: '500' }}>Search or Select Community Member</label>
+    <label style={{ display: 'block', marginBottom: '5px', fontWeight: '500' }}>Search and Select Community Member</label>
     <input 
       type="text"
       placeholder="Type member name..."
       value={form.memberSearch || ""}
       onChange={(e) => setForm({ ...form, memberSearch: e.target.value })}
-      style={{ padding: '10px', marginBottom: '15px', borderRadius: '6px', border: '1px solid #ddd', width: '100%', boxSizing: 'border-box' }}
+      style={{ padding: '10px', marginBottom: '10px', borderRadius: '6px', border: '1px solid #ddd', width: '100%', boxSizing: 'border-box' }}
+      autoComplete="off"
     />
 
-    <label style={{ display: 'block', marginBottom: '5px', fontWeight: '500' }}>Community Members</label>
-    <select 
-      value={form.selectedMemberName || ""} 
-      onChange={(e) => {
-        const selectedName = e.target.value;
-        const [familyId, memberName] = selectedName.split('|');
-        const family = families.find(f => f.familyId === familyId);
-        setForm({ ...form, selectedMemberName: memberName, headFamily: family?._id });
-      }}
-      style={{ padding: '10px', marginBottom: '20px', borderRadius: '6px', border: '1px solid #ddd', width: '100%', boxSizing: 'border-box', maxHeight: '200px' }}
-    >
-      <option value="">-- Select a Member --</option>
+    <div style={{ maxHeight: '250px', overflowY: 'auto', border: '1px solid #ddd', borderRadius: '6px', marginBottom: '20px' }}>
       {families
         .flatMap(f => 
           f.members?.map(m => ({
@@ -1800,13 +1790,63 @@ view==="list" ? (
           return altarMatch || lectorMatch;
         })
         .filter(m => m.name.toLowerCase().includes((form.memberSearch || "").toLowerCase()))
-        .map((m, idx) => (
-          <option key={idx} value={m.fullId}>
-            {m.name} ({m.familyHead}'s family - {m.familyId})
-          </option>
-        ))
-      }
-    </select>
+        .length === 0 ? (
+        <p style={{ padding: '15px', color: '#999', textAlign: 'center' }}>No members found</p>
+      ) : (
+        families
+          .flatMap(f => 
+            f.members?.map(m => ({
+              name: m.name,
+              community: m.community,
+              familyId: f.familyId,
+              familyHead: f.head,
+              fullId: `${f.familyId}|${m.name}`
+            })) || []
+          )
+          .filter(m => {
+            const communityName = communities[editingCommunityIdx]?.name;
+            const altarMatch = m.community === "Altar" && communityName === "Altar Servers";
+            const lectorMatch = m.community === "Lector" && communityName === "Lectors Ministry";
+            return altarMatch || lectorMatch;
+          })
+          .filter(m => m.name.toLowerCase().includes((form.memberSearch || "").toLowerCase()))
+          .map((m, idx) => (
+            <div 
+              key={idx}
+              onClick={() => {
+                const family = families.find(f => f.familyId === m.familyId);
+                setForm({ ...form, selectedMemberName: m.name, headFamily: family?._id, memberSearch: '' });
+              }}
+              style={{
+                padding: '12px',
+                borderBottom: '1px solid #eee',
+                cursor: 'pointer',
+                backgroundColor: form.selectedMemberName === m.name ? '#f0f0f0' : 'white',
+                transition: 'background-color 0.2s'
+              }}
+              onMouseEnter={(e) => e.target.style.backgroundColor = '#f9f9f9'}
+              onMouseLeave={(e) => e.target.style.backgroundColor = form.selectedMemberName === m.name ? '#f0f0f0' : 'white'}
+            >
+              <strong>{m.name}</strong>
+              <p style={{ margin: '3px 0', fontSize: '0.9rem', color: '#666' }}>{m.familyHead}'s family - {m.familyId}</p>
+            </div>
+          ))
+      )}
+    </div>
+
+    {form.selectedMemberName && (
+      <div style={{
+        padding: '12px',
+        marginBottom: '20px',
+        backgroundColor: '#e8f5e9',
+        border: '1px solid #4caf50',
+        borderRadius: '6px',
+        color: '#2e7d32',
+        fontWeight: '500'
+      }}>
+        ✓ Selected: <strong>{form.selectedMemberName}</strong>
+      </div>
+    )}
 
     <button 
       className="primary-btn" 

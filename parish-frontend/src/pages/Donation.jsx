@@ -47,8 +47,22 @@ function Donation() {
       return;
     }
 
+    const razorpayKey = import.meta.env.VITE_RAZORPAY_KEY;
+    
+    if (!razorpayKey) {
+      setError("Payment system is not configured. Please contact the administrator.");
+      console.error("VITE_RAZORPAY_KEY is not set in environment variables");
+      return;
+    }
+
+    if (!window.Razorpay) {
+      setError("Payment gateway failed to load. Please refresh the page.");
+      console.error("Razorpay script not loaded");
+      return;
+    }
+
     const options = {
-      key: import.meta.env.VITE_RAZORPAY_KEY,
+      key: razorpayKey,
       amount: amount * 100,
       currency: "INR",
       name: "ParishConnect",
@@ -89,8 +103,13 @@ function Donation() {
       }
     };
 
-    const rzp = new window.Razorpay(options);
-    rzp.open();
+    try {
+      const rzp = new window.Razorpay(options);
+      rzp.open();
+    } catch (error) {
+      console.error("Razorpay initialization error:", error);
+      setError("Failed to initialize payment. Please try again.");
+    }
   };
 
   return (

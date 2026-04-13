@@ -111,7 +111,7 @@ const MassBooking = () => {
     if (!validate()) return;
 
     const razorpayOptions = {
-      key: "rzp_test_SRSusjYraQKAww", // Replace with your actual Razorpay Key ID
+      key: import.meta.env.VITE_RAZORPAY_KEY,
       amount: 100 * 100, // Amount in paise (e.g., 100 = ₹1)
       currency: "INR",
       name: "ParishConnect",
